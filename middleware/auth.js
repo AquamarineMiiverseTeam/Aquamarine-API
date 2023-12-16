@@ -31,12 +31,12 @@ async function auth(req, res, next) {
     switch (parseInt(req.param_pack.platform_id)) {
         case 0:
             sql = "SELECT * FROM accounts WHERE 3ds_service_token = ?";
+            req.platform = "3ds";
             break;
         case 1:
-            sql = "SELECT * FROM accounts WHERE wiiu_service_token = ?";
-            break;
         default:
             sql = "SELECT * FROM accounts WHERE wiiu_service_token = ?";
+            req.platform = "wiiu";
             break;
     }
 

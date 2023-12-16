@@ -60,8 +60,8 @@ route.post("/", multer().none(), async (req, res) => {
     var current_time = (await query("SELECT NOW()"))[0]['NOW()'];
 
     //Create the post
-    var result = await query(`INSERT INTO posts (create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from) 
-    VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?)`, [current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform]);
+    var result = await query(`INSERT INTO posts (account_id, create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id) 
+    VALUES(?, ?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?)`, [req.account[0].id, current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id]);
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
