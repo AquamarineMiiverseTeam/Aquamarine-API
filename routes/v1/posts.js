@@ -59,10 +59,15 @@ route.post("/", multer().none(), async (req, res) => {
     //TODO: add in account_id's to show which posts are owned by which accounts.
     var current_time = (await query("SELECT NOW()"))[0]['NOW()'];
 
+    //Create the post
     var result = await query(`INSERT INTO posts (create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from) 
     VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?)`, [current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform]);
 
+    //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
+
     res.sendStatus(200);
+
+    console.log("Created New Post!".blue)
 })
 
 module.exports = route;

@@ -19,7 +19,8 @@ app.use(auth);
 
 //Grab index of all routes and set them in our express app
 const routes = require('./routes/index');
-app.use("/v1/posts", routes.API_POSTS)
+app.use("/v1/posts", routes.API_POSTS);
+app.use("/v1/people", routes.API_PEOPLE);
 
 //Set our app to listen on the config port
 app.listen(config_http.port, async () => {
