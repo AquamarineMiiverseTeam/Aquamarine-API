@@ -1,0 +1,28 @@
+{
+  "name": "aquamarine-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NoNameGivenCoder/Aquamarine.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NoNameGivenCoder/Aquamarine/issues"
+  },
+  "homepage": "https://github.com/NoNameGivenCoder/Aquamarine#readme",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "express": "^4.18.2",
+    "moment": "^2.29.4",
+    "multer": "^1.4.5-lts.1",
+    "mysql": "^2.18.1",
+    "promise-mysql": "^5.2.0",
+    "xmlbuilder": "^15.1.1"
+  }
+}
