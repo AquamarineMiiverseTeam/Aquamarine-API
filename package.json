@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/NoNameGivenCoder/Aquamarine#readme",
   "dependencies": {
+    "axios": "^1.6.2",
     "colors": "^1.4.0",
     "express": "^4.18.2",
     "moment": "^2.29.4",
