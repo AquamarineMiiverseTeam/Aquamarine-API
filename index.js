@@ -29,5 +29,6 @@ app.listen(config_http.port, async () => {
     //TODO: add in account table and show number of accounts generated
     var num_posts = (await query("SELECT COUNT(id) FROM posts"))[0]["COUNT(id)"];
     var num_communities = (await query("SELECT COUNT(id) FROM communities"))[0]["COUNT(id)"];
-    console.log("[STATUS] Database Status \n \nNumber of posts: %d \nNumber of communities: %d".blue, num_posts, num_communities);
+    var num_accounts = (await query("SELECT COUNT(id) FROM accounts"))[0]["COUNT(id)"];
+    console.log("[STATUS] Database Status \n \nNumber of posts: %d \nNumber of communities: %d\nNumber of Accounts: %d".blue, num_posts, num_communities, num_accounts);
 })
