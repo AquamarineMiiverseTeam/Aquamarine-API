@@ -31,17 +31,20 @@ route.post("/", multer().none(), async (req, res) => {
     //Getting the full account data.
     try {
         account_json = (await axios.get("https://nnidlt.murilo.eu.org/api.php?env=production&user_id=" + nnid)).data;
-        console.log(account_json);
     } catch (error) {
         console.log("[ERROR] (%s) %s".red, moment().format("HH:mm:ss"), error.response.data);
         res.status(error.response.status);
         res.send(error.response.data); return;
     }
 
+    var current_time = (await query("SELECT NOW()"))[0]["NOW()"];
+
     //Creating account in database
-    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, language_id, admin, banned, ${req.platform}_service_token, password_hash, password_salt) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, 
-    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", req.param_pack.language_id, 0, 0, service_token, passwordHash, salt]);
+    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, language_id, admin, banned, ${req.platform}_service_token, password_hash, password_salt, create_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
+    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", req.param_pack.language_id, 0, 0, service_token, passwordHash, salt, current_time]);
     res.sendStatus(201);
+
+    console.log("[INFO] (%s) Created account for %s.".blue, moment().format("HH:mm:ss"), nnid)
 })
 
 route.post('/login', multer().none(), async (req, res) => {
@@ -60,7 +63,14 @@ route.post('/login', multer().none(), async (req, res) => {
     //Adding the new token to the database!
     if (passwordHash == account.password_hash) {
         await query(`UPDATE accounts SET ${req.platform}_service_token=?`, req.service_token);
-        res.sendStatus(201);
+        
+        if (req.platform == "3ds") {
+            res.redirect(`https://n3ds.olv.nonamegiven.xyz/titles/show`);
+        } else {
+            res.redirect(`https://portal.olv.nonamegiven.xyz/titles/show`);
+        }
+
+        
     } else {
         res.sendStatus(401);
     }
