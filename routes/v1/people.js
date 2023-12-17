@@ -46,13 +46,24 @@ route.post("/", multer().none(), async (req, res) => {
 
 route.post('/login', multer().none(), async (req, res) => {
     var nnid = req.body.nnid;
-    var password = req.body.password;
 
-    //Checking if the account exists
-    if ((await query("SELECT id FROM accounts WHERE nnid=?", nnid)).length <= 0) {res.sendStatus(404); console.log("[ERROR] (%s) No account found for %s.".red, moment().format("HH:mm:ss"), nnid); return;}
+    var accounts = await query("SELECT * FROM accounts WHERE nnid=?", nnid);
 
-    var sql = ""
-    var account = await query()
+    //Error checking
+    if (accounts.length <= 0) { res.sendStatus(404); console.log("[ERROR] (%s) No account found for %s.".red, moment().format("HH:mm:ss"), nnid); return; }
+    if (accounts.length > 1) { res.sendStatus(500); console.log("[ERROR] (%s) Something has gone horribly wrong. Pls fix db :)\nError on NNID %s".red, moment().format("HH:mm:ss"), nnid); return; }
+
+    //Authenticating the password
+    var account = accounts[0];
+    var passwordHash = crypto.createHash('sha256').update(req.body.password + account.password_salt).digest('hex');
+
+    //Adding the new token to the database!
+    if (passwordHash == account.password_hash) {
+        await query(`UPDATE accounts SET ${req.platform}_service_token=?`, req.service_token);
+        res.sendStatus(201);
+    } else {
+        res.sendStatus(401);
+    }
 })
 
 module.exports = route;
