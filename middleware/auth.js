@@ -34,6 +34,9 @@ async function auth(req, res, next) {
             req.platform = "3ds";
             break;
         case 1:
+            sql = "SELECT * FROM accounts WHERE wiiu_service_token = ?";
+            req.platform = "wiiu";
+            break;
         default:
             sql = "SELECT * FROM accounts WHERE wiiu_service_token = ?";
             req.platform = "wiiu";

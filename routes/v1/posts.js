@@ -3,10 +3,15 @@ const route = express.Router();
 
 const util = require('util')
 const xmlbuilder = require('xmlbuilder');
-const multer = require('multer')
+const multer = require('multer');
+const moment = require('moment');
 
 const con = require('../../database_con');
 const query = util.promisify(con.query).bind(con);
+
+const decoder = require('../../decoder');
+
+const fs = require('fs')
 
 route.post("/", multer().none(), async (req, res) => {
 
@@ -20,12 +25,12 @@ route.post("/", multer().none(), async (req, res) => {
 
     //Less important variables, will only need a body or painting to continue.
     var body = (req.body.body) ? req.body.body : "";
-    var painting = (req.body.painting) ? req.body.painting : "";
+    var painting = (req.body.painting) ? req.body.painting.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
 
     //Metadata about post. Not needed in some games.
     var screenshot = (req.body.screenshot) ? req.body.screenshot : "";
-    var app_data = (req.body.app_data) ? req.body.app_data : "";
-    var screenshot = (req.body.screenshot) ? req.body.screenshot : "";
+    var app_data = (req.body.app_data) ? req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
+    var screenshot = (req.body.screenshot) ? req.body.screenshot.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
     var topic_tag = (req.body.topic_tag) ? req.body.topic_tag : "";
     var search_key = (req.body.search_key) ? req.body.search_key : "";
     var platform;
@@ -39,7 +44,7 @@ route.post("/", multer().none(), async (req, res) => {
         community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)));
         
         //Checking if there is an avaliable community
-        if (community_id.length == 0) { res.sendStatus(404); return;}
+        if (community_id.length == 0) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
 
         community_id = community_id[0]['id'];
     }
@@ -60,14 +65,17 @@ route.post("/", multer().none(), async (req, res) => {
     var current_time = (await query("SELECT NOW()"))[0]['NOW()'];
 
     //Create the post
-    var result = await query(`INSERT INTO posts (account_id, create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id) 
-    VALUES(?, ?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?)`, [req.account[0].id, current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id]);
+    var result = await query(`INSERT INTO posts (account_id, create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
+    VALUES(?, ?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id]);
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
-    res.sendStatus(200);
+    if (!body) {
+        fs.writeFileSync(__dirname + `/../../${result.insertId}.png`, decoder.paintingProccess(painting), 'base64')
+    }
 
-    console.log("Created New Post!".blue)
+    res.sendStatus(200);
+    console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
 
 module.exports = route;

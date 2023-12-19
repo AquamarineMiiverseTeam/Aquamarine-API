@@ -13,6 +13,8 @@ const axios = require('axios');
 
 const crypto = require('crypto');
 
+const endpoint_config = require('../../../Aquamarine-Discovery/config/endpoints.json');
+
 route.post("/", multer().none(), async (req, res) => {
     //Checking to make sure request doesn't already have an account attached
     if (req.account.length >= 1) {res.sendStatus(403); console.log("[ERROR] (%s) Account is already created.".red, moment().format("HH:mm:ss")); return;}
@@ -42,13 +44,19 @@ route.post("/", multer().none(), async (req, res) => {
     //Creating account in database
     await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, language_id, admin, banned, ${req.platform}_service_token, password_hash, password_salt, create_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
     [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", req.param_pack.language_id, 0, 0, service_token, passwordHash, salt, current_time]);
-    res.sendStatus(201);
+    
+    if (req.platform == "3ds") {
+        res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
+    } else {
+        res.redirect(`https://${endpoint_config.portal_url}/account/account_created`);
+    }
 
     console.log("[INFO] (%s) Created account for %s.".blue, moment().format("HH:mm:ss"), nnid)
 })
 
 route.post('/login', multer().none(), async (req, res) => {
     var nnid = req.body.nnid;
+    var service_token = req.service_token;
 
     var accounts = await query("SELECT * FROM accounts WHERE nnid=?", nnid);
 
@@ -62,12 +70,12 @@ route.post('/login', multer().none(), async (req, res) => {
 
     //Adding the new token to the database!
     if (passwordHash == account.password_hash) {
-        await query(`UPDATE accounts SET ${req.platform}_service_token=?`, req.service_token);
+        await query(`UPDATE accounts SET ${req.platform}_service_token=? WHERE id=?`, [service_token, account.id]);
         
         if (req.platform == "3ds") {
-            res.redirect(`https://n3ds.olv.nonamegiven.xyz/titles/show`);
+            res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
         } else {
-            res.redirect(`https://portal.olv.nonamegiven.xyz/titles/show`);
+            res.redirect(`https://${endpoint_config.portal_url}/account/account_created`);
         }
 
         
