@@ -26,9 +26,6 @@ route.post("/", multer().none(), async (req, res) => {
     var language = req.body.language;
     var country = req.body.country; 
 
-    console.log(language);
-    console.log(req.body);
-
     //Hashing and Salting the password
     var salt = crypto.randomBytes(8).toString('hex');
     var passwordHash = crypto.createHash('sha256').update(req.body.password + salt).digest('hex');
