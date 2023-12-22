@@ -65,8 +65,8 @@ route.post("/", multer().none(), async (req, res) => {
     var current_time = (await query("SELECT NOW()"))[0]['NOW()'];
 
     //Create the post
-    var result = await query(`INSERT INTO posts (account_id, create_time, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
-    VALUES(?, ?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, current_time, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id]);
+    var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
+    VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id]);
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 

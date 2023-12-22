@@ -44,11 +44,9 @@ route.post("/", multer().none(), async (req, res) => {
         res.send(error.response.data); return;
     }
 
-    var current_time = (await query("SELECT NOW()"))[0]["NOW()"];
-
     //Creating account in database
-    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, create_time, language, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
-    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, current_time, language, country]);
+    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, language, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
+    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, language, country]);
     
     if (req.platform == "3ds") {
         res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
