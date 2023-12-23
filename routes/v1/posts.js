@@ -37,7 +37,7 @@ route.post("/", multer().none(), async (req, res) => {
 
     //If no body or painting exists, what is there to post??
     if (!body && !painting) { res.sendStatus(400); return; }
-    if (!feeling_id && !language_id && !community_id && !is_spoiler && !is_autopost && !is_app_jumpable) { res.sendStatus(400); return;}
+    if (!feeling_id || !language_id || !community_id || !is_spoiler || !is_autopost || !is_app_jumpable) { res.sendStatus(400); return;}
 
     //Checking if the community id is 0, if it is, then get the community that shares the requests parampack title id.
     if (community_id == 0) {
@@ -67,8 +67,12 @@ route.post("/", multer().none(), async (req, res) => {
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
-    if (!body) {
-        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.png`, decoder.paintingProccess(painting), 'base64')
+    if (painting) {
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.png`, decoder.paintingProccess(painting), 'base64');
+    }
+
+    if (screenshot) {
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
     }
 
     res.sendStatus(200);
