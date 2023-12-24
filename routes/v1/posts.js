@@ -79,4 +79,26 @@ route.post("/", multer().none(), async (req, res) => {
     console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
 
+route.post("/:post_id/empathies", async (req, res) => {
+    const post_id = req.params.post_id;
+    const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0]
+
+    //Checking to see if the user has already yeah'd the post
+    if (current_yeah) {
+        //If the user has yeah'd, delete the empathy in the database for them
+        await query("DELETE FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]);
+
+        //Once that is finished, send a 200 (OK) response
+        //Also for portal and n3ds, send a json containing the result.
+        res.status(200).send({result : "deleted"});
+    } else {
+        //If the user hasn't yeah'd, create an empathy in the database for them
+        await query("INSERT INTO empathies (account_id, post_id) VALUES (?, ?)", [req.account[0].id, post_id]);
+
+        //Once that is finished, send a 200 (OK) response
+        //Also for portal and n3ds, send a json containing the result.
+        res.status(200).send({result : "created"});
+    }
+})
+
 module.exports = route;
