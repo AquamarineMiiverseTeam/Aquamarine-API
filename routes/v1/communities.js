@@ -56,8 +56,7 @@ route.get('/:community_id/posts', async (req, res) => {
             .e("is_community_private_autopost", "0").up()
             .e("is_spoiler", posts[i].spoiler).up()
             .e("is_app_jumpable", posts[i].is_app_jumpable).up()
-            //TODO: add in empathy count once empathies are working
-            .e("empathy_count", 0).up()
+            .e("empathy_count", (await query("SELECT * FROM empathies WHERE post_id=?", posts[i].id)).length).up()
             .e("language_id", posts[i].language_id).up()
             .e("number", 1).up();
         if (posts[i].painting) {
