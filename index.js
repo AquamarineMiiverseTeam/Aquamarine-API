@@ -14,6 +14,15 @@ const config_database = require('./config/database.json');
 const logger = require('./middleware/log');
 const auth = require('./middleware/auth');
 
+app.use(function (req, res, next) {
+    res.setHeader('Access-Control-Allow-Origin', 'https://n3ds.olv.nonamegiven.xyz');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'x-nintendo-servicetoken,x-nintendo-parampack,content-type');
+    res.setHeader('Access-Control-Allow-Credentials', true);
+
+    next();
+});
+
 app.use(logger);
 app.use(auth);
 
@@ -21,7 +30,7 @@ app.use(auth);
 const routes = require('./routes/index');
 app.use("/v1/posts", routes.API_POSTS);
 app.use("/v1/people", routes.API_PEOPLE);
-app.use("/v1/communities", routes.API_COMMUNITIES)
+app.use("/v1/communities", routes.API_COMMUNITIES);
 
 //Set our app to listen on the config port
 app.listen(config_http.port, async () => {
