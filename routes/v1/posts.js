@@ -81,7 +81,7 @@ route.post("/", multer().none(), async (req, res) => {
 
 route.post("/:post_id/empathies", async (req, res) => {
     const post_id = req.params.post_id;
-    const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0]
+    const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0];
 
     //Checking to see if the user has already yeah'd the post
     if (current_yeah) {
