@@ -6,14 +6,13 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const con = require('../../database_con');
+const con = require('../../../database_con');
+const endpoint_config = require('../../../endpoints.json');
 const query = util.promisify(con.query).bind(con);
 
 const axios = require('axios');
 
 const crypto = require('crypto');
-
-const endpoint_config = require('../../../Aquamarine-Discovery/config/endpoints.json');
 
 route.post("/", multer().none(), async (req, res) => {
     //Checking to make sure request doesn't already have an account attached

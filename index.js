@@ -1,18 +1,17 @@
 const express = require('express');
 const path = require('path');
 const util = require('util')
-const con = require('./database_con');
+const con = require('../database_con');
 const query = util.promisify(con.query).bind(con);
 const colors = require('colors');
 
 const app = express();
 
 const config_http = require('./config/http.json');
-const config_database = require('./config/database.json');
 
 //Grab logger and auth middleware and use it. (Logs all incoming HTTP/HTTPS requests)
 const logger = require('./middleware/log');
-const auth = require('./middleware/auth');
+const auth = require('../auth_middleware');
 
 app.use(function (req, res, next) {
     res.setHeader('Access-Control-Allow-Origin', 'https://n3ds.olv.nonamegiven.xyz');
