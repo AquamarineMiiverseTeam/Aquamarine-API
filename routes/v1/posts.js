@@ -15,6 +15,8 @@ const fs = require('fs')
 
 route.post("/", multer().none(), async (req, res) => {
 
+    console.log(req.body)
+
     //Important variables. Won't continue posting if these variables arn't there.
     var feeling_id = req.body.feeling_id;
     var language_id = req.body.language_id;
@@ -67,8 +69,10 @@ route.post("/", multer().none(), async (req, res) => {
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
-    if (painting) {
+    if (painting && req.param_pack.platform_id == 1) {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.png`, decoder.paintingProccess(painting), 'base64');
+    } else if (painting && req.param_pack.platform_id == 0) {
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.bmp`, painting, 'base64');
     }
 
     if (screenshot) {
