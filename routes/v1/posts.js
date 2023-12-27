@@ -6,6 +6,8 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
+const endpoint_config = require('../../../endpoints.json');
+
 const con = require('../../../database_con');
 const query = util.promisify(con.query).bind(con);
 
@@ -79,7 +81,7 @@ route.post("/", multer().none(), async (req, res) => {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
     }
 
-    res.sendStatus(200);
+    res.status(200).redirect(`https://${endpoint_config.n3ds_url}/communities/${community_id}`);
     console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
 
