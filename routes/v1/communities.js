@@ -14,6 +14,7 @@ route.get('/:community_id/posts', async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
     const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%" ` : '';
+    const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%" ` : '';
     const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid ` : '';
     var language_id = '';
     
@@ -30,7 +31,7 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community id could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${topic_tag} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;
     const posts = await query(sql);
 
     let xml = xmlbuilder.create('result')
