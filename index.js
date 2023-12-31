@@ -14,7 +14,13 @@ const logger = require('./middleware/log');
 const auth = require('../auth_middleware');
 
 app.use(function (req, res, next) {
-    res.setHeader('Access-Control-Allow-Origin', 'https://n3ds.olv.nonamegiven.xyz');
+
+    const allowedOrigins = ['https://portal.olv.nonamegiven.xyz', 'https://n3ds.olv.nonamegiven.xyz', 'https://disc.olv.nonamegiven.xyz'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'x-nintendo-servicetoken,x-nintendo-parampack,content-type');
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -39,5 +45,6 @@ app.listen(config_http.port, async () => {
     var num_posts = (await query("SELECT COUNT(id) FROM posts"))[0]["COUNT(id)"];
     var num_communities = (await query("SELECT COUNT(id) FROM communities"))[0]["COUNT(id)"];
     var num_accounts = (await query("SELECT COUNT(id) FROM accounts"))[0]["COUNT(id)"];
-    console.log("[STATUS] Database Status \n \nNumber of posts: %d \nNumber of communities: %d\nNumber of Accounts: %d".blue, num_posts, num_communities, num_accounts);
+    var num_empathies = (await query("SELECT COUNT(id) FROM empathies"))[0]["COUNT(id)"];
+    console.log("[STATUS] Database Status \n \nNumber of posts: %d \nNumber of communities: %d\nNumber of Accounts: %d \nNumber of Empathies: %d".blue, num_posts, num_communities, num_accounts, num_empathies);
 })
