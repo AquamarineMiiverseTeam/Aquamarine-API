@@ -16,9 +16,6 @@ const decoder = require('../../decoder');
 const fs = require('fs')
 
 route.post("/", multer().none(), async (req, res) => {
-
-    console.log(req.body)
-
     //Important variables. Won't continue posting if these variables arn't there.
     var feeling_id = req.body.feeling_id;
     var language_id = req.body.language_id;
@@ -65,6 +62,12 @@ route.post("/", multer().none(), async (req, res) => {
             break;
     }
 
+    //Checking to see if the post is of the correct type for community
+    var community_post_type = (await query("SELECT post_type FROM communities WHERE id=?", community_id))[0].post_type;
+
+    if (community_post_type == "text" && painting) { res.sendStatus(400); return;}
+    if (community_post_type == "memo" && body) { res.sendStatus(400); return;}
+
     //Create the post
     var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
     VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id]);
@@ -81,7 +84,7 @@ route.post("/", multer().none(), async (req, res) => {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
     }
 
-    res.status(200).redirect(`https://${endpoint_config.n3ds_url}/communities/${community_id}`);
+    res.status(404).redirect(`https://${endpoint_config.n3ds_url}/communities/${community_id}`);
     console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
 
