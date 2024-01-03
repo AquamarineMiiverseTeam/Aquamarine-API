@@ -24,11 +24,11 @@ route.get('/:community_id/posts', async (req, res) => {
     //Community id's are usually set to 0 for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
     if (req.params.community_id == 0) {
-        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"'), req.param_pack.title_id)[0];
+        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))[0].id;
     } else { community_id = req.params.community_id }
 
     //If community doesn't exist, send a 404 (Not Found)
-    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community id could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
+    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
     var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${topic_tag} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;

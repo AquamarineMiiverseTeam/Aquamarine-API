@@ -41,6 +41,9 @@ app.use("/v1/communities", routes.API_COMMUNITIES);
 app.listen(config_http.port, async () => {
     console.log("[INFO] Listening on port %d".green, config_http.port);
 
+    //Initializing database
+    await query("SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
+    
     //TODO: add in account table and show number of accounts generated
     var num_posts = (await query("SELECT COUNT(id) FROM posts"))[0]["COUNT(id)"];
     var num_communities = (await query("SELECT COUNT(id) FROM communities"))[0]["COUNT(id)"];
