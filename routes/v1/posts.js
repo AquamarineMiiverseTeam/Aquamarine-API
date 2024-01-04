@@ -42,10 +42,11 @@ route.post("/", multer().none(), async (req, res) => {
 
     //Checking if the community id is 0, if it is, then get the community that shares the requests parampack title id.
     if (community_id == 0) {
-        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)));
-        
+        community_id = (await query('SELECT * FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)));
+
         //Checking if there is an avaliable community
         if (community_id.length == 0) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
+        if (community_id[0].type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community_id[0].name); return; }
 
         community_id = community_id[0]['id'];
     }
