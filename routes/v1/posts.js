@@ -46,7 +46,6 @@ route.post("/", multer().none(), async (req, res) => {
 
         //Checking if there is an avaliable community
         if (community_id.length == 0) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
-        if (community_id[0].type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community_id[0].name); return; }
 
         community_id = community_id[0]['id'];
     }
@@ -64,10 +63,11 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Checking to see if the post is of the correct type for community
-    var community_post_type = (await query("SELECT post_type FROM communities WHERE id=?", community_id))[0].post_type;
+    var community = (await query("SELECT * FROM communities WHERE id=?", community_id))[0];
 
-    if (community_post_type == "text" && painting) { res.sendStatus(400); return;}
-    if (community_post_type == "memo" && body) { res.sendStatus(400); return;}
+    if (community.post_type == "text" && painting) { res.sendStatus(400); return;}
+    if (community.post_type == "memo" && body) { res.sendStatus(400); return;}
+    if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
 
     //Create the post
     var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
