@@ -24,32 +24,15 @@ route.get("/", async (req, res) => {
         .e("request_name", "communities").up()
         .e("communities");
 
-    for (let i = 0; i < main_community.length; i++) {
-        const community = main_community[i];
-        
-        xml.e("community")
-            .e("olive_community_id", community.id).up()
-            .e("community_id", community.id).up()
-            .e("name", community.name).up()
-            .e("description", community.description).up()
-            .e("icon", "abcdefghijklmnop").up()
-            .e("icon_3ds", "abcdefghijklmnop").up()
-            .e("pid", community.pid).up()
-            .e("app_data", community.app_data).up()
-            .e("is_user_community", community.user_community).up().up();
-    }
-
     for (let i = 0; i < sub_communites.length; i++) {
         const community = sub_communites[i];
         
         xml.e("community")
-            .e("olive_community_id", community.id).up()
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
             .e("icon", "abcdefghijklmnop").up()
             .e("icon_3ds", "abcdefghijklmnop").up()
-            .e("pid", community.pid).up()
             .e("app_data", community.app_data).up()
             .e("is_user_community", community.user_community).up().up();
     }
