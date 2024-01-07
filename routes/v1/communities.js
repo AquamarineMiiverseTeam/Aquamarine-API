@@ -9,8 +9,60 @@ const moment = require('moment');
 const con = require('../../../database_con');
 const query = util.promisify(con.query).bind(con);
 
+route.get("/", async (req, res) => {
+    //Getting querys and converting them to SQL
+    const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
+    const type = (req.query['type'] == "official") ? ` AND user_community=0` : '';
+
+    //Grabing all communities
+    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' ${type} LIMIT 1`, parseInt(req.param_pack.title_id)));
+    const sub_communites = (await query(`SELECT * FROM communities WHERE parent_community_id=? AND type='sub' ${type} ${limit}`, parseInt(main_community[0].id)))
+
+    var xml = xmlbuilder.create("result")
+        .e("has_error", 0).up()
+        .e("version", 1).up()
+        .e("request_name", "communities").up()
+        .e("communities");
+
+    for (let i = 0; i < main_community.length; i++) {
+        const community = main_community[i];
+        
+        xml.e("community")
+            .e("olive_community_id", community.id).up()
+            .e("community_id", community.id).up()
+            .e("name", community.name).up()
+            .e("description", community.description).up()
+            .e("icon", "abcdefghijklmnop").up()
+            .e("icon_3ds", "abcdefghijklmnop").up()
+            .e("pid", community.pid).up()
+            .e("app_data", community.app_data).up()
+            .e("is_user_community", community.user_community).up().up();
+    }
+
+    for (let i = 0; i < sub_communites.length; i++) {
+        const community = sub_communites[i];
+        
+        xml.e("community")
+            .e("olive_community_id", community.id).up()
+            .e("community_id", community.id).up()
+            .e("name", community.name).up()
+            .e("description", community.description).up()
+            .e("icon", "abcdefghijklmnop").up()
+            .e("icon_3ds", "abcdefghijklmnop").up()
+            .e("pid", community.pid).up()
+            .e("app_data", community.app_data).up()
+            .e("is_user_community", community.user_community).up().up();
+    }
+
+    xml = xml.up().end({pretty : true, allowEmpty : true})
+
+    console.log(xml)
+
+    res.setHeader('Content-Type', "application/xml")
+    res.send(xml);
+})
+
 route.get('/:community_id/posts', async (req, res) => {
-    
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
     const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%" ` : '';
@@ -24,7 +76,13 @@ route.get('/:community_id/posts', async (req, res) => {
     //Community id's are usually set to 0 for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
     if (req.params.community_id == 0) {
-        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))[0].id;
+        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))
+
+        if (community_id.length <= 0) {
+            community_id = "";
+        } else {
+            community_id = community_id[0].id
+        }
     } else { community_id = req.params.community_id }
 
     //If community doesn't exist, send a 404 (Not Found)
