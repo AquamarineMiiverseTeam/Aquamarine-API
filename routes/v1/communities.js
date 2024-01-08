@@ -31,8 +31,8 @@ route.get("/", async (req, res) => {
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", "abcdefghijklmnop").up()
-            .e("icon_3ds", "abcdefghijklmnop").up()
+            .e("icon", "").up()
+            .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("is_user_community", community.user_community).up().up();
     }
@@ -51,10 +51,26 @@ route.get('/:community_id/posts', async (req, res) => {
     const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%" ` : '';
     const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%" ` : '';
     const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid ` : '';
+    const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0 `;
     var language_id = '';
+    var type;
     
     //If language_id isn't set to all, then find the true language id
     if (Number(req.query['language_id']) != 254) { language_id = ` AND language_id=${req.query['language_id']} ` }
+
+    //If type is given, specifiy an exact type
+    if (req.query['type']) {
+        switch (req.query['type']) {
+            case "memo":
+                type = "AND painting IS NOT NULL"
+                break;
+            case "text":
+                type = "AND body IS NOT NULL"
+                break;
+            default:
+                break;
+        }
+    }
 
     //Community id's are usually set to 0 for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
@@ -72,7 +88,7 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${topic_tag} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${topic_tag} ${allow_spoiler} ${type} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;
     const posts = await query(sql);
 
     let xml = xmlbuilder.create('result')
@@ -124,6 +140,7 @@ route.get('/:community_id/posts', async (req, res) => {
     }
 
     xml = xml.end({pretty : true, allowEmpty : true});
+
     res.setHeader('Content-Type', "application/xml")
     res.send(xml)
 })
