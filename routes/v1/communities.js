@@ -28,7 +28,6 @@ route.get("/", async (req, res) => {
         const community = sub_communites[i];
         
         xml.e("community")
-            .e("olive_community_id", community.id).up()
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
@@ -56,7 +55,7 @@ route.get('/:community_id/posts', async (req, res) => {
     var by = "";
     
     //If language_id isn't set to all, then find the true language id
-    if (Number(req.query['language_id']) != 254) { language_id = ` AND language_id=${req.query['language_id']} ` }
+    if (Number(req.query['language_id']) != 254) { language_id = ` AND language_id=${req.query['language_id']}` }
 
     //If type is given, specifiy an exact type
     if (req.query['type']) {
@@ -83,32 +82,48 @@ route.get('/:community_id/posts', async (req, res) => {
         }
     }
 
-    //Community id's are usually set to 0 or 0xFFFF for in-game post grabbing, so, we have to get them by the title id from the parampack
+    //Community id's are usually set to 0 or 0xFFFF (4294967295) for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
-    if (req.params.community_id == 0 || parseInt(req.params.community_id) == 0xFFFF) {
-        console.log("ingame post thingy")
+    var backupcommunity_id;
+    if (req.params.community_id == 0 || req.params.community_id == 4294967295) {
         community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))
 
         if (community_id.length <= 0) {
             community_id = "";
+            backupcommunity_id = "";
+        } else if (community_id.length == 1) {
+            community_id = community_id[0].id;
+            backupcommunity_id = community_id;
         } else {
-            community_id = community_id[0].id
+            backupcommunity_id = community_id[0].id;
+            var tempcommunityid = "";
+            for (var h in community_id) {
+                tempcommunityid += `'${community_id[h].id}', `;
+            }
+            community_id = tempcommunityid.slice(0, -2);
         }
     } else { community_id = req.params.community_id }
 
     //If community doesn't exist, send a 404 (Not Found)
-    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
+    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id=${community_id}${search_key}${topic_tag}${allow_spoiler}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
     console.log(sql);
     const posts = await query(sql);
+
+    var post_community_id;
+    if (posts.length >= 1) {
+        post_community_id = posts[0].community_id;
+    } else {
+        post_community_id = backupcommunity_id
+    }
 
     let xml = xmlbuilder.create('result')
         .e('has_error', "0").up()
         .e('version', "1").up()
         .e('request_name', 'posts').up()
-        .e('topic').e('community_id', community_id).up().up()
+        .e('topic').e('community_id', post_community_id).up().up()
         .e('posts');
     for (let i = 0; i < posts.length; i++) {
         const account_posted = (await query("SELECT * FROM accounts WHERE pid=?", posts[i].pid))[0]
