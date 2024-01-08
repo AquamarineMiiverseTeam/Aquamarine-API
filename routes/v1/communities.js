@@ -28,6 +28,7 @@ route.get("/", async (req, res) => {
         const community = sub_communites[i];
         
         xml.e("community")
+            .e("olive_community_id", community.id).up()
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
@@ -39,8 +40,6 @@ route.get("/", async (req, res) => {
 
     xml = xml.up().end({pretty : true, allowEmpty : true})
 
-    console.log(xml)
-
     res.setHeader('Content-Type', "application/xml")
     res.send(xml);
 })
@@ -48,12 +47,13 @@ route.get("/", async (req, res) => {
 route.get('/:community_id/posts', async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
-    const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%" ` : '';
-    const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%" ` : '';
-    const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid ` : '';
-    const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0 `;
-    var language_id = '';
-    var type;
+    const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%"` : '';
+    const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%"` : '';
+    const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid` : '';
+    const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0`;
+    var language_id = "";
+    var type = "";
+    var by = "";
     
     //If language_id isn't set to all, then find the true language id
     if (Number(req.query['language_id']) != 254) { language_id = ` AND language_id=${req.query['language_id']} ` }
@@ -62,19 +62,31 @@ route.get('/:community_id/posts', async (req, res) => {
     if (req.query['type']) {
         switch (req.query['type']) {
             case "memo":
-                type = "AND painting IS NOT NULL"
+                type = " AND painting IS NOT NULL"
                 break;
             case "text":
-                type = "AND body IS NOT NULL"
+                type = " AND body IS NOT NULL"
                 break;
             default:
                 break;
         }
     }
 
-    //Community id's are usually set to 0 for in-game post grabbing, so, we have to get them by the title id from the parampack
+    //If by is given, specify who
+    if (req.query['by']) {
+        switch (req.query['by']) {
+            case "self":
+                by = ` AND account_id=${req.account[0].id} `
+                break;
+            default:
+                break;
+        }
+    }
+
+    //Community id's are usually set to 0 or 0xFFFF for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
-    if (req.params.community_id == 0) {
+    if (req.params.community_id == 0 || parseInt(req.params.community_id) == 0xFFFF) {
+        console.log("ingame post thingy")
         community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))
 
         if (community_id.length <= 0) {
@@ -88,7 +100,8 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id=${community_id} ${search_key} ${topic_tag} ${allow_spoiler} ${type} ${language_id} ${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    var sql = `SELECT * FROM posts WHERE community_id=${community_id}${search_key}${topic_tag}${allow_spoiler}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    console.log(sql);
     const posts = await query(sql);
 
     let xml = xmlbuilder.create('result')
@@ -140,6 +153,8 @@ route.get('/:community_id/posts', async (req, res) => {
     }
 
     xml = xml.end({pretty : true, allowEmpty : true});
+
+    //console.log(xml)
 
     res.setHeader('Content-Type', "application/xml")
     res.send(xml)
