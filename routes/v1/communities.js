@@ -109,7 +109,6 @@ route.get('/:community_id/posts', async (req, res) => {
 
     //Grabbing posts from DB with parameters
     var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
-    console.log(sql);
     const posts = await query(sql);
 
     var post_community_id;
@@ -169,10 +168,30 @@ route.get('/:community_id/posts', async (req, res) => {
 
     xml = xml.end({pretty : true, allowEmpty : true});
 
-    //console.log(xml)
-
     res.setHeader('Content-Type', "application/xml")
     res.send(xml)
+})
+
+route.post("/:community_id/favorite", async (req, res) => {
+    //Getting the correct community to favorite
+    const community_id = req.params.community_id;
+    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
+
+    //If no community exists, send 404
+    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
+
+    //Getting if a favorite exists for this community
+    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
+
+    if (favorite.length == 0) {
+        await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
+
+        res.status(200).send({result : "created"});
+    } else {
+        await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
+
+        res.status(200).send({result : "deleted"});
+    }
 })
 
 module.exports = route
