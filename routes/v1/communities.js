@@ -55,7 +55,7 @@ route.get('/:community_id/posts', async (req, res) => {
     var by = "";
     
     //If language_id isn't set to all, then find the true language id
-    if (Number(req.query['language_id']) != 254) { language_id = ` AND language_id=${req.query['language_id']}` }
+    if (Number(req.query['language_id']) != 254 && req.query['language_id']) { language_id = ` AND language_id=${req.query['language_id']}` }
 
     //If type is given, specifiy an exact type
     if (req.query['type']) {
