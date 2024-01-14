@@ -23,7 +23,8 @@ route.post("/", multer().none(), async (req, res) => {
     var nnid = req.body.nnid;
     var service_token = req.service_token;
     var language = req.body.language;
-    var country = req.body.country; 
+    var country = req.body.country;
+    var game_experience = req.body.game_experience;
 
     //Hashing and Salting the password
     var salt = crypto.randomBytes(8).toString('hex');
@@ -41,8 +42,8 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Creating account in database
-    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, language, country) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
-    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, language, country]);
+    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, language, country, game_experience) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
+    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, language, country, game_experience]);
     
     if (req.platform == "3ds") {
         res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
