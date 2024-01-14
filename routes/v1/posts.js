@@ -13,7 +13,7 @@ const query = util.promisify(con.query).bind(con);
 
 const decoder = require('../../decoder');
 
-const fs = require('fs')
+const fs = require('fs');
 
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
@@ -34,6 +34,7 @@ route.post("/", multer().none(), async (req, res) => {
     var screenshot = (req.body.screenshot) ? req.body.screenshot.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
     var topic_tag = (req.body.topic_tag) ? req.body.topic_tag : "";
     var search_key = (req.body.search_key) ? req.body.search_key : "";
+    var owns_title = (req.body.owns_title == 1) ? 1 : 0;
     var platform;
 
     //If no body or painting exists, what is there to post??
@@ -70,8 +71,8 @@ route.post("/", multer().none(), async (req, res) => {
     if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
 
     //Create the post
-    var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id) 
-    VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id]);
+    var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id, title_owned) 
+    VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id, owns_title]);
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
@@ -85,7 +86,7 @@ route.post("/", multer().none(), async (req, res) => {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
     }
 
-    res.status(404).redirect(`https://${endpoint_config.n3ds_url}/communities/${community_id}`);
+    res.sendStatus(200);
     console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
 
