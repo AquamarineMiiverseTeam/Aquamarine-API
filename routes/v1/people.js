@@ -16,7 +16,6 @@ const crypto = require('crypto');
 
 route.post("/", multer().none(), async (req, res) => {
     //Checking to make sure request doesn't already have an account attached
-    if (req.account.length >= 1) {res.sendStatus(403); console.log("[ERROR] (%s) Account is already created.".red, moment().format("HH:mm:ss")); return;}
     if ((await query("SELECT id FROM accounts WHERE nnid=?", req.body.nnid)).length >= 1) {res.sendStatus(403); console.log(`[ERROR] (%s) Account is already created for ${req.body.nnid}.`.red, moment().format("HH:mm:ss")); return;}
 
     //Grabbing neccesary login details
