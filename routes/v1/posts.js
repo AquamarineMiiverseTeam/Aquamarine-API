@@ -68,7 +68,8 @@ route.post("/", multer().none(), async (req, res) => {
 
     if (community.post_type == "text" && painting) { res.sendStatus(400); return;}
     if (community.post_type == "memo" && body) { res.sendStatus(400); return;}
-    if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
+    if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s, which is a Announcements Community.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
+    if (community.ingame_only == 1 && (!search_key || !topic_tag)) { res.sendStatus(400); console.log("[ERROR] (%s) %s tried to post to %s, which is In-Game only.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
 
     //Create the post
     var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id, title_owned) 
