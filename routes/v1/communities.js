@@ -6,7 +6,7 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const con = require('../../../database_con');
+const con = require('../../../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 
 route.get("/", async (req, res) => {

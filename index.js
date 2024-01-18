@@ -1,21 +1,22 @@
 const express = require('express');
 const path = require('path');
 const util = require('util')
-const con = require('../database_con');
+const con = require('../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 const colors = require('colors');
 
 const app = express();
 
 const config_http = require('./config/http.json');
+const config_endpoints = require('../Aquamarine-Utils/endpoints.json');
 
 //Grab logger and auth middleware and use it. (Logs all incoming HTTP/HTTPS requests)
 const logger = require('./middleware/log');
-const auth = require('../auth_middleware');
+const auth = require('../Aquamarine-Utils/auth_middleware');
 
 app.use(function (req, res, next) {
 
-    const allowedOrigins = ['https://portal.olv.nonamegiven.xyz', 'https://n3ds.olv.nonamegiven.xyz', 'https://disc.olv.nonamegiven.xyz'];
+    const allowedOrigins = [config_endpoints.portal_url, config_endpoints.n3ds_url, config_endpoints.discovery_url];
     const origin = req.headers.origin;
     if (allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);

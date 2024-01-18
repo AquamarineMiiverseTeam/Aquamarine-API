@@ -6,12 +6,12 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const endpoint_config = require('../../../endpoints.json');
+const endpoint_config = require('../../../Aquamarine-Utils/endpoints.json');
 
-const con = require('../../../database_con');
+const con = require('../../../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 
-const decoder = require('../../decoder');
+const decoder = require('../../../Aquamarine-Utils/decoder');
 
 const fs = require('fs');
 
