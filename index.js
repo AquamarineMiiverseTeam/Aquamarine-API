@@ -17,9 +17,9 @@ const auth = require('../Aquamarine-Utils/auth_middleware');
 app.use(function (req, res, next) {
 
     const allowedOrigins = [config_endpoints.portal_url, config_endpoints.n3ds_url, config_endpoints.discovery_url];
-    const origin = req.headers.origin;
+    const origin = req.headers.origin.replace("https://", "");
     if (allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Origin', "https://" + origin);
     }
 
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
