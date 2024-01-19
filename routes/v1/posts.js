@@ -15,6 +15,8 @@ const decoder = require('../../../Aquamarine-Utils/decoder');
 
 const fs = require('fs');
 
+const database_query = require("../../../Aquamarine-Utils/database_query");
+
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
     var feeling_id = req.body.feeling_id;
@@ -92,6 +94,10 @@ route.post("/", multer().none(), async (req, res) => {
 
 route.post("/:post_id/empathies", async (req, res) => {
     const post_id = req.params.post_id;
+    const post = (await query("SELECT * FROM posts WHERE id=?", post_id))[0];
+
+    if (!post) { res.sendStatus(404); return; }
+
     const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0];
 
     //Checking to see if the user has already yeah'd the post
@@ -102,13 +108,20 @@ route.post("/:post_id/empathies", async (req, res) => {
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
         res.status(200).send({result : "deleted"});
+
+        //Delete the old notification
+        await query("DELETE FROM notifications WHERE yeah_id=? AND yeah_account_id_2=?", [current_yeah.id, req.account[0].id])
     } else {
         //If the user hasn't yeah'd, create an empathy in the database for them
-        await query("INSERT INTO empathies (account_id, post_id) VALUES (?, ?)", [req.account[0].id, post_id]);
+        const new_empathy = await query("INSERT INTO empathies (account_id, post_id) VALUES (?, ?)", [req.account[0].id, post_id]);
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
         res.status(200).send({result : "created"});
+
+        //Create a new notification
+        await query("INSERT INTO notifications (account_id, type, image_url, content, yeah_id, yeah_account_id_2) VALUES (?,?,?,?,?,?)", 
+        [post.account_id, "yeah", `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_like_face.png`, `${req.account[0].mii_name} has yeahed your post!`, new_empathy.insertId, req.account[0].id]);
     }
 })
 
