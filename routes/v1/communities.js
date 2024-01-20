@@ -194,4 +194,18 @@ route.post("/:community_id/favorite", async (req, res) => {
     }
 })
 
+route.post("/:community_id/settings", multer().none(), async (req, res) => {
+    //1 - Show All
+    //2 - Hide Spoilers
+    //3 - Hide Screenshots
+    //4 - Hide Both
+
+    const new_array = JSON.parse(req.account[0].community_settings)
+    new_array[req.params.community_id] = req.body.view_setting
+
+    await query("UPDATE accounts SET community_settings=? WHERE id=?", [JSON.stringify(new_array), req.account[0].id])
+
+    res.sendStatus(200)
+})
+
 module.exports = route
