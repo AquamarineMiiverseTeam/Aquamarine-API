@@ -18,3 +18,5 @@ route.get("/", async (req, res) => {
         //Here's where XML specific code would go, we don't have it fully ready though.
     }
 })
+
+module.exports = route

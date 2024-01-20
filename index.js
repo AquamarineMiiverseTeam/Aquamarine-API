@@ -38,6 +38,7 @@ const routes = require('./routes/index');
 app.use("/v1/posts", routes.API_POSTS);
 app.use("/v1/people", routes.API_PEOPLE);
 app.use("/v1/communities", routes.API_COMMUNITIES);
+app.use("/v1/notifications", routes.API_NOTIFICATIONS);
 
 //Set our app to listen on the config port
 app.listen(config_http.port, async () => {
