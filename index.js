@@ -15,6 +15,7 @@ const logger = require('./middleware/log');
 const auth = require('../Aquamarine-Utils/auth_middleware');
 
 app.use(function (req, res, next) {
+    if (!req.headers.origin) { next(); return;}
 
     const allowedOrigins = [config_endpoints.portal_url, config_endpoints.n3ds_url, config_endpoints.discovery_url];
     const origin = req.headers.origin.replace("https://", "");

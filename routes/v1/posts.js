@@ -78,10 +78,8 @@ route.post("/", multer().none(), async (req, res) => {
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
-    if (painting && req.param_pack.platform_id == 1) {
+    if (painting) {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.png`, decoder.paintingProccess(painting), 'base64');
-    } else if (painting && req.param_pack.platform_id == 0) {
-        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.bmp`, painting, 'base64');
     }
 
     if (screenshot) {
