@@ -83,4 +83,21 @@ route.post('/login', multer().none(), async (req, res) => {
     }
 })
 
+route.post("/update", async (req, res) => {
+    var account_json;
+
+    try {
+        account_json = (await axios.get("https://nnidlt.murilo.eu.org/api.php?env=production&user_id=" + nnid)).data;
+    } catch (error) {
+        console.log("[ERROR] (%s) %s".red, moment().format("HH:mm:ss"), error.response.data);
+        res.status(error.response.status);
+        res.send(error.response.data); return;
+    }
+
+    await query("UPDATE accounts WHERE account_id=? SET mii=? mii_name=? mii_hash=? pid=?", 
+    [req.account[0].id, account_json.data, account_json.name, account_json.images.hash, account_json.pid]);
+
+    res.sendStatus(200);
+})
+
 module.exports = route;
