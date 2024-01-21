@@ -12,7 +12,7 @@ const config_endpoints = require('../Aquamarine-Utils/endpoints.json');
 
 //Grab logger and auth middleware and use it. (Logs all incoming HTTP/HTTPS requests)
 const logger = require('./middleware/log');
-const auth = require('../Aquamarine-Utils/auth_middleware');
+const auth = require('../Aquamarine-Utils/middleware/auth_middleware');
 
 app.use(function (req, res, next) {
     if (!req.headers.origin) { next(); return;}
