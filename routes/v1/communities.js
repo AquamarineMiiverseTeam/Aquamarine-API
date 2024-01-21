@@ -9,6 +9,8 @@ const moment = require('moment');
 const con = require('../../../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 
+const common = require('../../../Aquamarine-Utils/common')
+
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
@@ -31,7 +33,7 @@ route.get("/", async (req, res) => {
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", "").up()
+            .e("icon", common.wwp.encodeIcon(community.id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("is_user_community", community.user_community).up().up();
