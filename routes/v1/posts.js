@@ -95,6 +95,7 @@ route.post("/:post_id/empathies", async (req, res) => {
     const post = (await query("SELECT * FROM posts WHERE id=?", post_id))[0];
 
     if (!post) { res.sendStatus(404); return; }
+    if (post.account_id == req.account[0].id) { res.sendStatus(403); return;}
 
     const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0];
 
