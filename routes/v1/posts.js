@@ -16,6 +16,7 @@ const decoder = require('../../../Aquamarine-Utils/decoder');
 const fs = require('fs');
 
 const database_query = require("../../../Aquamarine-Utils/database_query");
+const common = require("../../../Aquamarine-Utils/common")
 
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
@@ -109,7 +110,7 @@ route.post("/:post_id/empathies", async (req, res) => {
         res.status(200).send({result : "deleted"});
 
         //Delete the old notification
-        await query("DELETE FROM notifications WHERE yeah_id=? AND yeah_account_id_2=?", [current_yeah.id, req.account[0].id])
+        await query("DELETE FROM notifications WHERE content_id=? AND from_account_id=?", [current_yeah.id, req.account[0].id])
     } else {
         //If the user hasn't yeah'd, create an empathy in the database for them
         const new_empathy = await query("INSERT INTO empathies (account_id, post_id) VALUES (?, ?)", [req.account[0].id, post_id]);
@@ -119,8 +120,7 @@ route.post("/:post_id/empathies", async (req, res) => {
         res.status(200).send({result : "created"});
 
         //Create a new notification
-        await query("INSERT INTO notifications (account_id, type, image_url, content, yeah_id, yeah_account_id_2) VALUES (?,?,?,?,?,?)", 
-        [post.account_id, "yeah", `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_like_face.png`, `${req.account[0].mii_name} has yeahed your post!`, new_empathy.insertId, req.account[0].id]);
+        common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `${req.account[0].mii_name} has Yeahed your post!`, new_empathy.insertId)
     }
 })
 
