@@ -15,10 +15,10 @@ route.get("/", async (req, res) => {
     //People is the max number of people the Wii U menu requests
     const people = req.query['people'];
 
-    const communities = await query(`SELECT * FROM communities AS c WHERE platform="wiiu"
+    const communities = await query(`SELECT * FROM communities AS c WHERE platform="wiiu" AND NOT type="sub"
     ORDER BY 
     (SELECT COUNT(community_id) FROM posts WHERE community_id=c.id)
-    ASC`)
+    DESC`)
 
     var xml = xmlbuilder.create("result")
         .e('has_error', '0').up()
