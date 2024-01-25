@@ -15,20 +15,21 @@ const fs = require('fs')
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
-    var type;
+    var type = " WHERE ";
 
     if (req.query['type']) {
         switch (req.query['type']) {
             case "my":
-                type = ` AND account_id=${req.account[0].id}`;
+                type = ` WHERE account_id=${req.account[0].id} AND `;
                 break;
             case "official":
-                type = ` AND user_community=0`;
+                type = ` WHERE user_community=0 AND `;
                 break;
             case "favorite":
-                type = ` `;
+                type = ` INNER JOIN favorites ON favorites.community_id = communities.id WHERE favorites.account_id=${req.account[0].id} AND `
                 break;
             default:
+                type = " WHERE "
                 break;
         }
     }
@@ -39,7 +40,7 @@ route.get("/", async (req, res) => {
     //If theres no community, send a 404 (Not Found)
     if (!main_community[0]) { res.sendStatus(404); return; }
 
-    const sub_communites = (await query(`SELECT * FROM communities WHERE parent_community_id=? AND type='sub' ${type} ORDER BY create_time DESC ${limit}`, parseInt(main_community[0].id)))
+    const sub_communites = (await query(`SELECT * FROM communities${type}communities.parent_community_id=? AND communities.type='sub' ORDER BY communities.create_time DESC ${limit}`, parseInt(main_community[0].id)))
 
     var xml = xmlbuilder.create("result")
         .e("has_error", 0).up()
@@ -49,12 +50,12 @@ route.get("/", async (req, res) => {
 
     for (let i = 0; i < sub_communites.length; i++) {
         const community = sub_communites[i];
-        
+
         xml.e("community")
-            .e("community_id", community.id).up()
+            .e("community_id", community.community_id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", common.wwp.encodeIcon(community.id)).up()
+            .e("icon", await common.wwp.encodeIcon(community.community_id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("is_user_community", community.user_community).up().up();
@@ -132,7 +133,7 @@ route.get('/:community_id/posts', async (req, res) => {
     const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%"` : '';
     const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid` : '';
     const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0`;
-    const pid = (req.query['pid']) ? `` : ` AND pid=${req.query['pid']}`
+    const pid = (req.query['pid']) ? ` AND pid=${req.query['pid']}` : ``
     var language_id = "";
     var type = "";
     var by = "";
