@@ -15,15 +15,31 @@ const fs = require('fs')
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
-    const type = (req.query['type'] == "official") ? ` AND user_community=0` : '';
+    var type;
+
+    if (req.query['type']) {
+        switch (req.query['type']) {
+            case "my":
+                type = ` AND account_id=${req.account[0].id}`;
+                break;
+            case "official":
+                type = ` AND user_community=0`;
+                break;
+            case "favorite":
+                type = ` `;
+                break;
+            default:
+                break;
+        }
+    }
 
     //Grabing all communities
-    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' ${type} LIMIT 1`, parseInt(req.param_pack.title_id)));
+    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' LIMIT 1`, parseInt(req.param_pack.title_id)));
 
     //If theres no community, send a 404 (Not Found)
     if (!main_community[0]) { res.sendStatus(404); return; }
 
-    const sub_communites = (await query(`SELECT * FROM communities WHERE parent_community_id=? AND type='sub' ${type} ${limit}`, parseInt(main_community[0].id)))
+    const sub_communites = (await query(`SELECT * FROM communities WHERE parent_community_id=? AND type='sub' ${type} ORDER BY create_time DESC ${limit}`, parseInt(main_community[0].id)))
 
     var xml = xmlbuilder.create("result")
         .e("has_error", 0).up()
@@ -77,6 +93,38 @@ route.post("/", multer().none(), async (req, res) => {
     res.sendStatus(200);
 })
 
+route.post("/:community_id.favorite", async (req, res) => {
+    //Getting the correct community to favorite
+    const community_id = req.params.community_id;
+    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
+
+    //If no community exists, send 404
+    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
+
+    //Getting if a favorite exists for this community
+    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
+
+    await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
+
+    res.status(200).send({result : "created"});
+})
+
+route.post("/:community_id.unfavorite", async (req, res) => {
+    //Getting the correct community to favorite
+    const community_id = req.params.community_id;
+    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
+
+    //If no community exists, send 404
+    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
+
+    //Getting if a favorite exists for this community
+    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
+
+    await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
+
+    res.status(200).send({result : "deleted"});
+})
+
 route.get('/:community_id/posts', async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
@@ -84,6 +132,7 @@ route.get('/:community_id/posts', async (req, res) => {
     const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%"` : '';
     const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid` : '';
     const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0`;
+    const pid = (req.query['pid']) ? `` : ` AND pid=${req.query['pid']}`
     var language_id = "";
     var type = "";
     var by = "";
@@ -142,7 +191,7 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
+    var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${pid}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
     const posts = await query(sql);
 
     var post_community_id;

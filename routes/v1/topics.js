@@ -40,7 +40,7 @@ route.get("/", async (req, res) => {
             account_ids_used += ` AND NOT account_id=${account_ids[i]} `;
         }
 
-        const posts = await query(`SELECT * FROM posts WHERE community_id=${community.id} ${account_ids_used} ORDER BY create_time DESC`);
+        const posts = await query(`SELECT * FROM posts WHERE community_id=${community.id} ${account_ids_used} GROUP BY account_id ORDER BY create_time DESC`);
 
         //Every community is code_named a topic
         xml = xml.e('topic')

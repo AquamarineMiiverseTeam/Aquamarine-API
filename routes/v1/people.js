@@ -41,13 +41,13 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Creating account in database
-    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, language, country, game_experience) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
-    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, language, country, game_experience]);
+    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, game_experience, language, country, relationship_visible, allow_friend, empathy_notification, pronouns, community_settings) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
+    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, game_experience, language, country, 1, 0, 1, "they/them", "{}"]);
     
     if (req.platform == "3ds") {
-        res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
+        res.sendStatus(200);
     } else {
-        res.redirect(`https://${endpoint_config.portal_url}/account/account_created`);
+        res.sendStatus(200);
     }
 
     console.log("[INFO] (%s) Created account for %s.".blue, moment().format("HH:mm:ss"), nnid)
