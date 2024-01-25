@@ -9,7 +9,8 @@ const moment = require('moment');
 const con = require('../../../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 
-const common = require('../../../Aquamarine-Utils/common')
+const common = require('../../../Aquamarine-Utils/common');
+const fs = require('fs')
 
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
@@ -47,6 +48,33 @@ route.get("/", async (req, res) => {
 
     res.setHeader('Content-Type', "application/xml")
     res.send(xml);
+})
+
+//Creating New Communities
+route.post("/", multer().none(), async (req, res) => {
+    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' LIMIT 1`, parseInt(req.param_pack.title_id)));
+
+    //Making sure the community is valid to create for
+    if (!main_community[0]) { res.sendStatus(404); console.log("[ERROR] (%s) Tried to create community. Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
+    if (main_community[0].allow_custom_communities != 1) {res.sendStatus(400); console.log("[ERROR] (%s) Tried to create community.".red, moment().format("HH:mm:ss")); return;}
+
+    //Getting all meta-deta about the community
+    const icon = req.body.icon;
+    const name = req.body.name;
+    const description = req.body.description;
+    const app_data = req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim();
+
+    //Getting the real icon for the community
+    const icon_jpeg = (await common.wwp.decodeIcon(icon)).slice(22, Infinity);
+
+    //Creating the new community and creating the icon for it.
+    const new_community = await query("INSERT INTO communities (name, description, app_data, pid, account_id, user_community, title_ids, platform, type, parent_community_id, ingame_only, allow_custom_communities) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+    [name, description, app_data, req.account[0].pid, req.account[0].id, 1, main_community[0].title_ids, "wiiu", "sub", main_community[0].id, 0, 0]);
+
+    fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community.insertId}.jpg`, icon_jpeg, 'base64');
+
+    //Finally sending a 200 (OK) as a result
+    res.sendStatus(200);
 })
 
 route.get('/:community_id/posts', async (req, res) => {
