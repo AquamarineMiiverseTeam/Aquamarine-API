@@ -18,6 +18,10 @@ route.get("/", async (req, res) => {
 
     //Grabing all communities
     const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' ${type} LIMIT 1`, parseInt(req.param_pack.title_id)));
+
+    //If theres no community, send a 404 (Not Found)
+    if (!main_community[0]) { res.sendStatus(404); return; }
+
     const sub_communites = (await query(`SELECT * FROM communities WHERE parent_community_id=? AND type='sub' ${type} ${limit}`, parseInt(main_community[0].id)))
 
     var xml = xmlbuilder.create("result")
