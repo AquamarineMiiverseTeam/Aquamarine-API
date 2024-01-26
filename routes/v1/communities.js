@@ -52,7 +52,7 @@ route.get("/", async (req, res) => {
         const community = sub_communites[i];
 
         xml.e("community")
-            .e("community_id", community.id).up()
+            .e("community_id", community.community_id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
             .e("icon", await common.wwp.encodeIcon(community.community_id)).up()
@@ -113,8 +113,8 @@ route.post("/:community_id.favorite", async (req, res) => {
 
     await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
 
-    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
-    res.status(200).send({result : "created"});
+    //res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
+    res.sendStatus(200);
 })
 
 route.post("/:community_id.unfavorite", async (req, res) => {
@@ -130,8 +130,8 @@ route.post("/:community_id.unfavorite", async (req, res) => {
 
     await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
 
-    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
-    res.status(200).send({result : "deleted"});
+    //res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
+    res.sendStatus(200);
 })
 
 route.get('/:community_id/posts', async (req, res) => {

@@ -17,24 +17,35 @@ route.get("/:user_pid/notifications", async (req, res) => {
     
     const sql = `SELECT * FROM accounts WHERE pid=?`
     var notificationAccount = (await query(sql, req.params.user_pid));
-    console.log(notificationAccount)
     
     if (notificationAccount[0]) {
-        var glow = (await common.notification.getAccountUnreadNotifications(notificationAccount)).length > 0;
+        const notifications = await common.notification.getAccountUnreadNotifications(notificationAccount)
 
-        if (glow) {
-            res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
-            res.sendStatus(204);
+        const result = {
+        result: {
+            has_error: 0,
+            version: 1,
+            request_name: "notifications",
+            notifications: {
+                unread_notifications_length: notifications.length,
+                unread_messages_length: 0
+            }
+        }}
+
+        const xml = xmlbuilder.create(result).end({allowEmpty : true})
+
+
+        if (notifications.length > 0) {
+            res.setHeader("content-type", "application/xml");
+            res.status(200).send(xml);
         }
         else {
             console.log("no notifications found")
-            res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
             res.sendStatus(404);
         }
     }
     else {
         console.log("notification account is null")
-        res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
         res.sendStatus(404);
     }
 })

@@ -38,7 +38,6 @@ const routes = require('./routes/index');
 app.use("/v1/posts", routes.API_POSTS);
 app.use("/v1/people", routes.API_PEOPLE);
 app.use("/v1/communities", routes.API_COMMUNITIES);
-app.use("/v1/notifications", routes.API_NOTIFICATIONS);
 app.use("/v1/topics", routes.API_TOPICS);
 app.use("/v1/users", routes.API_USERS);
 
