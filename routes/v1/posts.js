@@ -40,6 +40,9 @@ route.post("/", multer().none(), async (req, res) => {
     var owns_title = (req.body.owns_title == 1) ? 1 : 0;
     var platform;
 
+    //If there is no owns_title field in the formdata, it must be from ingame, in that case, set owns_title to true
+    if (!req.body.owns_title) { owns_title = 1; }
+
     //If no body or painting exists, what is there to post??
     if (!body && !painting) { res.sendStatus(400); return; }
     if (!feeling_id || !language_id || !community_id || !is_spoiler || !is_autopost || !is_app_jumpable) { res.sendStatus(400); return;}
@@ -87,6 +90,7 @@ route.post("/", multer().none(), async (req, res) => {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
     }
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::New-post");
     res.sendStatus(200);
     console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
 })
@@ -107,6 +111,7 @@ route.post("/:post_id/empathies", async (req, res) => {
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Empathy-delete");
         res.status(200).send({result : "deleted"});
 
         //Delete the old notification
@@ -117,6 +122,7 @@ route.post("/:post_id/empathies", async (req, res) => {
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Empathy-create");
         res.status(200).send({result : "created"});
 
         //Create a new notification

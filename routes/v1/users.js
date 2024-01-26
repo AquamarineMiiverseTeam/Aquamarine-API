@@ -10,14 +10,33 @@ const con = require('../../../Aquamarine-Utils/database_con');
 const query = util.promisify(con.query).bind(con);
 
 const common = require('../../../Aquamarine-Utils/common')
+const database_query = require('../../../Aquamarine-Utils/database_query')
 
-route.get("/:user_id/notifications", async (req, res) => {
-    res.setHeader("content-type", "application/xml")
+route.get("/:user_pid/notifications", async (req, res) => {
+    //res.setHeader("content-type", "application/xml")
     
-    var glow = (await common.notification.getAccountUnreadNotifications(req.account)).length > 0;
+    const sql = `SELECT * FROM accounts WHERE pid=?`
+    var notificationAccount = (await query(sql, req.params.user_pid));
+    console.log(notificationAccount)
+    
+    if (notificationAccount[0]) {
+        var glow = (await common.notification.getAccountUnreadNotifications(notificationAccount)).length > 0;
 
-    if (glow) res.status(200).send("<result/>");
-    else res.sendStatus(404);
+        if (glow) {
+            res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
+            res.sendStatus(204);
+        }
+        else {
+            console.log("no notifications found")
+            res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
+            res.sendStatus(404);
+        }
+    }
+    else {
+        console.log("notification account is null")
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
+        res.sendStatus(404);
+    }
 })
 
 module.exports = route

@@ -52,18 +52,20 @@ route.get("/", async (req, res) => {
         const community = sub_communites[i];
 
         xml.e("community")
-            .e("community_id", community.community_id).up()
+            .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
             .e("icon", await common.wwp.encodeIcon(community.community_id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
+            .e("pid", community.pid).up()
             .e("is_user_community", community.user_community).up().up();
     }
 
     xml = xml.up().end({pretty : true, allowEmpty : true})
 
     res.setHeader('Content-Type', "application/xml")
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-retrieve");
     res.send(xml);
 })
 
@@ -88,9 +90,13 @@ route.post("/", multer().none(), async (req, res) => {
     const new_community = await query("INSERT INTO communities (name, description, app_data, pid, account_id, user_community, title_ids, platform, type, parent_community_id, ingame_only, allow_custom_communities) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
     [name, description, app_data, req.account[0].pid, req.account[0].id, 1, main_community[0].title_ids, "wiiu", "sub", main_community[0].id, 0, 0]);
 
+    //Any community that is created must be favorited by the person who created it
+    await query("INSERT INTO favorites (community_id, account_id) VALUES(?,?)", [new_community.insertId, req.account[0].ids])
+
     fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community.insertId}.jpg`, icon_jpeg, 'base64');
 
     //Finally sending a 200 (OK) as a result
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-create");
     res.sendStatus(200);
 })
 
@@ -107,6 +113,7 @@ route.post("/:community_id.favorite", async (req, res) => {
 
     await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
     res.status(200).send({result : "created"});
 })
 
@@ -123,6 +130,7 @@ route.post("/:community_id.unfavorite", async (req, res) => {
 
     await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
     res.status(200).send({result : "deleted"});
 })
 
@@ -252,6 +260,7 @@ route.get('/:community_id/posts', async (req, res) => {
 
     xml = xml.end({pretty : true, allowEmpty : true});
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Post-search_by_topic");
     res.setHeader('Content-Type', "application/xml")
     res.send(xml)
 })
@@ -270,10 +279,12 @@ route.post("/:community_id/favorite", async (req, res) => {
     if (favorite.length == 0) {
         await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
 
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
         res.status(200).send({result : "created"});
     } else {
         await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
 
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
         res.status(200).send({result : "deleted"});
     }
 })
@@ -289,6 +300,7 @@ route.post("/:community_id/settings", multer().none(), async (req, res) => {
 
     await query("UPDATE accounts SET community_settings=? WHERE id=?", [JSON.stringify(new_array), req.account[0].id])
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-set_view");
     res.sendStatus(200)
 })
 

@@ -104,6 +104,7 @@ route.get("/", async (req, res) => {
     console.log(account_ids);
     console.log(account_ids_used)
 
+    res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-redirect_search");
     res.setHeader("content-type", "application/xml")
     res.send(xml.end({ pretty: true, allowEmpty: true }))
 })
