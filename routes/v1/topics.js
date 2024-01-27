@@ -35,7 +35,6 @@ route.get("/", async (req, res) => {
         const community = communities[i];
 
         //Making sure account_id/PID's are not repeating
-        
         for (let i = 0; i < account_ids.length; i++) {
             account_ids_used += ` AND NOT account_id=${account_ids[i]} `;
         }
@@ -100,9 +99,6 @@ route.get("/", async (req, res) => {
         }
         xml = xml.up().e('position', i + 1).up().up()
     }
-
-    console.log(account_ids);
-    console.log(account_ids_used)
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-redirect_search");
     res.setHeader("content-type", "application/xml")
