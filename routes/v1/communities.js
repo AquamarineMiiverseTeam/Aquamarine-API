@@ -51,8 +51,12 @@ route.get("/", async (req, res) => {
     for (let i = 0; i < sub_communites.length; i++) {
         const community = sub_communites[i];
 
+        if (req.query['type'] == "favorite") {
+            community.id = community.community_id;
+        }
+
         xml.e("community")
-            .e("community_id", community.community_id).up()
+            .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
             .e("icon", await common.wwp.encodeIcon(community.community_id)).up()
@@ -91,7 +95,7 @@ route.post("/", multer().none(), async (req, res) => {
     [name, description, app_data, req.account[0].pid, req.account[0].id, 1, main_community[0].title_ids, "wiiu", "sub", main_community[0].id, 0, 0]);
 
     //Any community that is created must be favorited by the person who created it
-    await query("INSERT INTO favorites (community_id, account_id) VALUES(?,?)", [new_community.insertId, req.account[0].ids])
+    await query("INSERT INTO favorites (community_id, account_id) VALUES(?,?)", [new_community.insertId, req.account[0].id])
 
     fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community.insertId}.jpg`, icon_jpeg, 'base64');
 
