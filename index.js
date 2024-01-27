@@ -35,11 +35,11 @@ app.use(auth);
 
 //Grab index of all routes and set them in our express app
 const routes = require('./routes/index');
-app.use("/v1/posts", routes.API_POSTS);
-app.use("/v1/people", routes.API_PEOPLE);
-app.use("/v1/communities", routes.API_COMMUNITIES);
-app.use("/v1/topics", routes.API_TOPICS);
-app.use("/v1/users", routes.API_USERS);
+app.use("/v1/posts", routes.v1.API_POSTS);
+app.use("/v1/people", routes.v1.API_PEOPLE);
+app.use("/v1/communities", routes.v1.API_COMMUNITIES);
+app.use("/v1/topics", routes.v1.API_TOPICS);
+app.use("/v1/users", routes.v1.API_USERS);
 
 //Set our app to listen on the config port
 app.listen(config_http.port, async () => {
