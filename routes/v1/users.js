@@ -14,34 +14,36 @@ const database_query = require('../../../Aquamarine-Utils/database_query')
 
 route.get("/:user_pid/notifications", async (req, res) => {
     //res.setHeader("content-type", "application/xml")
-    
+
     const sql = `SELECT * FROM accounts WHERE pid=?`
     var notificationAccount = (await query(sql, req.params.user_pid));
-    
+
     if (notificationAccount[0]) {
         const notifications = await common.notification.getAccountUnreadNotifications(notificationAccount)
 
-        const result = {
-        result: {
-            has_error: 0,
-            version: 1,
-            request_name: "notifications",
-            notifications: {
-                unread_notifications_length: notifications.length,
-                unread_messages_length: 0
-            }
-        }}
-
-        const xml = xmlbuilder.create(result).end({allowEmpty : true})
-
-
         if (notifications.length > 0) {
+            const result = {
+                result: {
+                    has_error: 0,
+                    version: 1,
+                    request_name: "notifications",
+                    notifications: {
+                        unread_notifications_length: notifications.length,
+                        unread_messages_length: 0
+                    }
+                }
+            }
+
+            const xml = xmlbuilder.create(result).end({ allowEmpty: true })
+
+            res.setHeader('X-Dispatch', "Olive::Web::API::V1::News-my_news");
             res.setHeader("content-type", "application/xml");
             res.status(200).send(xml);
         }
         else {
             console.log("no notifications found")
-            res.sendStatus(404);
+            res.sendStatus(204);
+            // 204 no content is better for this case (and it succesfully made the icon not glow so yuh)
         }
     }
     else {

@@ -24,10 +24,6 @@ function log(req, res, next) {
         case "PATCH":
             console.log(`[${req.method}] (${moment().format("HH:mm:ss")}) ${req.url}`.cyan);
             break;
-
-        case "OPTIONS":
-            console.log(`[${req.method}] (${moment().format("HH:mm:ss")}) ${req.url}`.blue);
-            break;
         default:
             break;
     }

@@ -126,7 +126,7 @@ route.post("/:post_id/empathies", async (req, res) => {
         res.status(200).send({result : "created"});
 
         //Create a new notification
-        common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `${req.account[0].mii_name} has Yeahed your post!`, new_empathy.insertId)
+        common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `${req.account[0].mii_name} has Yeahed your post!`, new_empathy.insertId, `/posts/${post.id}`)
     }
 })
 

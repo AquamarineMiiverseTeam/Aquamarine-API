@@ -5,5 +5,8 @@ module.exports = {
         API_COMMUNITIES : require('./v1/communities'),
         API_TOPICS : require('./v1/topics'),
         API_USERS : require('./v1/users')
-    }   
+    },
+    v2 : {
+        
+    }
 }
