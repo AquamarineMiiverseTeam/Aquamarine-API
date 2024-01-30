@@ -42,8 +42,9 @@ route.get("/:user_pid/notifications", async (req, res) => {
         }
         else {
             console.log("no notifications found")
-            res.sendStatus(204);
-            // 204 no content is better for this case (and it succesfully made the icon not glow so yuh)
+            // res.sendStatus(204);
+            // // 204 no content is better for this case (and it succesfully made the icon not glow so yuh)
+            res.sendStatus(404);
         }
     }
     else {

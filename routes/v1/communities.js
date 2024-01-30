@@ -206,6 +206,7 @@ route.get('/:community_id/posts', async (req, res) => {
     //Grabbing posts from DB with parameters
     var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${pid}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
     const posts = await query(sql);
+    console.log("[INFO] (%s) Found %d posts for %s.".green, moment().format("HH:mm:ss"), posts.length, (await query("SELECT name FROM communities WHERE id=?", community_id))[0].name)
 
     var post_community_id;
     if (posts.length >= 1) {
