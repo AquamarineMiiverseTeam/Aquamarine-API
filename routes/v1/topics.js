@@ -17,7 +17,7 @@ route.get("/", async (req, res) => {
 
     const communities = await query(`SELECT * FROM communities AS c WHERE platform="wiiu" AND NOT type="sub"
     ORDER BY 
-    (SELECT COUNT(community_id) FROM posts WHERE community_id=c.id)
+    (SELECT COUNT(community_id) FROM posts WHERE community_id=c.id AND create_time BETWEEN '${moment().subtract(5, "days").format("YYYY-MM-DD HH:mm:ss")}' AND '${moment().add(1, "day").format("YYYY-MM-DD HH:mm:ss")}')
     DESC`)
 
     var xml = xmlbuilder.create("result")
