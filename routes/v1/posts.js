@@ -1,43 +1,37 @@
 const express = require('express');
 const route = express.Router();
 
-const util = require('util')
-const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
-
-const endpoint_config = require('../../../Aquamarine-Utils/endpoints.json');
-
-const con = require('../../../Aquamarine-Utils/database_con');
-const query = util.promisify(con.query).bind(con);
 
 const decoder = require('../../../Aquamarine-Utils/decoder');
 
 const fs = require('fs');
 
-const database_query = require("../../../Aquamarine-Utils/database_query");
-const common = require("../../../Aquamarine-Utils/common")
+const logger = require('../../middleware/log');
+const db_con = require('../../../Aquamarine-Utils/database_con');
+
+const common = require('../../../Aquamarine-Utils/common');
 
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
-    var feeling_id = req.body.feeling_id;
-    var language_id = req.body.language_id;
+    const feeling_id = req.body.feeling_id;
+    const language_id = req.body.language_id;
     var community_id = req.body.community_id;    
-    var is_spoiler = req.body.is_spoiler;
-    var is_autopost = req.body.is_autopost;
-    var is_app_jumpable = req.body.is_app_jumpable;
+    const is_spoiler = req.body.is_spoiler;
+    const is_autopost = req.body.is_autopost;
+    const is_app_jumpable = req.body.is_app_jumpable;
 
     //Less important variables, will only need a body or painting to continue.
-    var body = (req.body.body) ? req.body.body : "";
-    var painting = (req.body.painting) ? req.body.painting.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
+    const body = (req.body.body) ? req.body.body : "";
+    const painting = (req.body.painting) ? req.body.painting.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
 
     //Metadata about post. Not needed in some games.
-    var screenshot = (req.body.screenshot) ? req.body.screenshot : "";
-    var app_data = (req.body.app_data) ? req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
-    var screenshot = (req.body.screenshot) ? req.body.screenshot.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
-    var topic_tag = (req.body.topic_tag) ? req.body.topic_tag : "";
-    var search_key = (req.body.search_key) ? req.body.search_key : "";
-    var owns_title = (req.body.owns_title == 1) ? 1 : 0;
+    const screenshot = (req.body.screenshot) ? req.body.screenshot : "";
+    const app_data = (req.body.app_data) ? req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
+    const topic_tag = (req.body.topic_tag) ? req.body.topic_tag : "";
+    const search_key = (req.body.search_key) ? req.body.search_key : "";
+    const title_owned = (req.body.owns_title == 1) ? 1 : 0;
     var platform;
 
     //If there is no owns_title field in the formdata, it must be from ingame, in that case, set owns_title to true
@@ -49,12 +43,12 @@ route.post("/", multer().none(), async (req, res) => {
 
     //Checking if the community id is 0, if it is, then get the community that shares the requests parampack title id.
     if (community_id == 0) {
-        community_id = (await query('SELECT * FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)));
+        community_id = await db_con("communities").whereLike("title_ids", `%${req.param_pack.title_id}%`)
 
         //Checking if there is an avaliable community
-        if (community_id.length == 0) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
+        if (community_id.length == 0) { res.sendStatus(404); logger.error(`Couldn't find a community for the Title ID: ${Number(req.param_pack.title_id).toString(16)}`); return;}
 
-        community_id = community_id[0]['id'];
+        community_id = community_id[0].id;
     }
 
     switch (parseInt(req.param_pack.platform_id)) {
@@ -70,44 +64,73 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Checking to see if the post is of the correct type for community
-    var community = (await query("SELECT * FROM communities WHERE id=?", community_id))[0];
+    var community = (await db_con("communities").where({id : community_id}))[0]
 
     if (community.post_type == "text" && painting) { res.sendStatus(400); return;}
     if (community.post_type == "memo" && body) { res.sendStatus(400); return;}
-    if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); console.log("[ERROR] (%s) %s tried to post to %s, which is a Announcements Community.".red, moment().format("HH:mm:ss"), req.account[0].nnid, community.name); return; }
+    if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); logger.error(`${req.account[0].nnid} tried to post to ${community.name}`); return; }
 
-    //Create the post
-    var result = await query(`INSERT INTO posts (account_id, ${(body) ? "body" : "painting"}, feeling_id, screenshot, title_id, search_key, spoiler, app_data, community_id, topic_tag, posted_from, language_id, pid, is_autopost, is_app_jumpable, country_id, region_id, platform_id, title_owned) 
-    VALUES(?, ?, ?, ?, ?, "${search_key}", ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [req.account[0].id, ((body) ? body : painting), feeling_id, screenshot, parseInt(req.param_pack.title_id), is_spoiler, app_data, community_id, topic_tag, platform, language_id, req.account[0].pid, is_autopost, is_app_jumpable, req.param_pack.country_id, req.param_pack.region_id, req.param_pack.platform_id, owns_title]);
+    //Create the post insert data
+    const insert_data = 
+    {
+        feeling_id : feeling_id,
+        language_id : language_id,
+        country_id : req.param_pack.country_id,
+        region_id : req.param_pack.region_id,
+        title_id : req.param_pack.title_id, 
+        platform_id : req.param_pack.platform_id,
+        community_id : community_id,
+
+        account_id : req.account[0].id,
+        pid : req.account[0].pid,
+
+        posted_from : platform,
+        title_owned : title_owned,
+
+        spoiler : is_spoiler, 
+        is_app_jumpable : is_app_jumpable,
+        is_autopost : is_autopost,
+
+        moderated : 0
+    }
+
+    if (body) {insert_data.body = body}
+    if (painting) {insert_data.painting = painting}
+    if (screenshot) {insert_data.screenshot = screenshot}
+    if (app_data) {insert_data.app_data = app_data}
+    if (topic_tag) {insert_data.topic_tag = topic_tag}
+    if (search_key) {insert_data.search_key = search_key}
+
+    const insert_id = (await db_con("posts").insert(insert_data))[0];
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
     if (painting) {
-        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${result.insertId}.png`, decoder.paintingProccess(painting), 'base64');
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
     }
 
     if (screenshot) {
-        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${result.insertId}.jpg`, screenshot, 'base64');
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${insert_id}.jpg`, screenshot, 'base64');
     }
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::New-post");
     res.sendStatus(200);
-    console.log("[INFO] (%s) Created New Post!".blue, moment().format("HH:mm:ss"));
+    logger.info(`${req.account[0].nnid} posted to ${community.name}!`)
 })
 
 route.post("/:post_id/empathies", async (req, res) => {
     const post_id = req.params.post_id;
-    const post = (await query("SELECT * FROM posts WHERE id=?", post_id))[0];
+    const post = (await db_con("posts").where({id : Number(post_id)}))[0]
 
     if (!post) { res.sendStatus(404); return; }
     if (post.account_id == req.account[0].id) { res.sendStatus(403); return;}
 
-    const current_yeah = (await query("SELECT * FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]))[0];
+    const current_yeah = (await db_con("empathies").where({account_id : req.account[0].id, post_id : post_id}))[0]
 
     //Checking to see if the user has already yeah'd the post
     if (current_yeah) {
         //If the user has yeah'd, delete the empathy in the database for them
-        await query("DELETE FROM empathies WHERE account_id=? AND post_id=?", [req.account[0].id, post_id]);
+        await db_con("empathies").where({account_id : req.account[0].id, post_id : post_id}).del();
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
@@ -115,15 +138,16 @@ route.post("/:post_id/empathies", async (req, res) => {
         res.status(200).send({result : "deleted"});
 
         //Delete the old notification
-        await query("DELETE FROM notifications WHERE content_id=? AND from_account_id=?", [current_yeah.id, req.account[0].id])
+        await db_con("notifications").where({content_id : current_yeah.id, from_account_id : req.account[0].id}).del();
     } else {
         //If the user hasn't yeah'd, create an empathy in the database for them
-        const new_empathy = await query("INSERT INTO empathies (account_id, post_id) VALUES (?, ?)", [req.account[0].id, post_id]);
+        const new_empathy = await db_con("empathies").insert({post_id : post_id, account_id : req.account[0].id})
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Empathy-create");
         res.status(200).send({result : "created"});
+        logger.info(`${req.account[0].nnid} empathied post: ${post_id}!`)
 
         //Create a new notification
         common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `gave a Yeah to`, new_empathy.insertId, `/posts/${post.id}`)

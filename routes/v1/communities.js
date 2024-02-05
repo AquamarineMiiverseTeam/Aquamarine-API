@@ -6,10 +6,6 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const con = require('../../../Aquamarine-Utils/database_con');
-const query = util.promisify(con.query).bind(con);
-
-const common = require('../../../Aquamarine-Utils/common');
 const fs = require('fs')
 
 route.get("/", async (req, res) => {
@@ -239,6 +235,7 @@ route.get('/:community_id/posts', async (req, res) => {
             .e("is_spoiler", posts[i].spoiler).up()
             .e("is_app_jumpable", posts[i].is_app_jumpable).up()
             .e("empathy_count", (await query("SELECT * FROM empathies WHERE post_id=?", posts[i].id)).length).up()
+            .e('empathy_added', (await query(`SELECT * FROM empathies WHERE post_id=${posts[i].id} AND account_id=${req.account[0].id}`)).length).up()
             .e("language_id", posts[i].language_id).up()
             .e("number", 1).up();
         if (posts[i].painting) {

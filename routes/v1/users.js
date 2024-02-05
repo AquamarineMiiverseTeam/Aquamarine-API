@@ -3,14 +3,6 @@ const route = express.Router();
 
 const util = require('util')
 const xmlbuilder = require('xmlbuilder');
-const multer = require('multer');
-const moment = require('moment');
-
-const con = require('../../../Aquamarine-Utils/database_con');
-const query = util.promisify(con.query).bind(con);
-
-const common = require('../../../Aquamarine-Utils/common')
-const database_query = require('../../../Aquamarine-Utils/database_query')
 
 route.get("/:user_pid/notifications", async (req, res) => {
     //res.setHeader("content-type", "application/xml")

@@ -6,10 +6,6 @@ const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const con = require('../../../Aquamarine-Utils/database_con');
-const endpoint_config = require('../../../Aquamarine-Utils/endpoints.json');
-const query = util.promisify(con.query).bind(con);
-
 const axios = require('axios');
 
 const crypto = require('crypto');
@@ -71,14 +67,9 @@ route.post('/login', multer().none(), async (req, res) => {
     if (passwordHash == account.password_hash) {
         await query(`UPDATE accounts SET ${req.platform}_service_token=? WHERE id=?`, [service_token, account.id]);
         
-        if (req.platform == "3ds") {
-            res.redirect(`https://${endpoint_config.n3ds_url}/account/account_created`);
-        } else {
-            res.redirect(`https://${endpoint_config.portal_url}/account/account_created`);
-        }
-
-        
+        res.sendStatus(200)
     } else {
+        console.log("Password Mismatch".red)
         res.sendStatus(401);
     }
 })
