@@ -131,6 +131,7 @@ route.post("/:post_id/empathies", async (req, res) => {
     if (current_yeah) {
         //If the user has yeah'd, delete the empathy in the database for them
         await db_con("empathies").where({account_id : req.account[0].id, post_id : post_id}).del();
+        logger.info(`${req.account[0].nnid} un-empathied post: ${post_id}!`);
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
@@ -147,10 +148,10 @@ route.post("/:post_id/empathies", async (req, res) => {
         //Also for portal and n3ds, send a json containing the result.
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Empathy-create");
         res.status(200).send({result : "created"});
-        logger.info(`${req.account[0].nnid} empathied post: ${post_id}!`)
+        logger.info(`${req.account[0].nnid} empathied post: ${post_id}!`);
 
         //Create a new notification
-        common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `gave a Yeah to`, new_empathy.insertId, `/posts/${post.id}`)
+        await common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `gave a Yeah to`, new_empathy[0], `/posts/${post.id}`)
     }
 })
 
