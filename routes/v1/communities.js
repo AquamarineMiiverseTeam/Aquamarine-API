@@ -13,7 +13,7 @@ const common = require('../../../Aquamarine-Utils/common');
 
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
-    const limit = (req.query['limit']) ? req.query['limit'] : 0
+    const limit = (req.query['limit']) ? req.query['limit'] : 100
 
     //Grabing all communities
     const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({type : "main"}).limit(1))[0];
@@ -41,8 +41,6 @@ route.get("/", async (req, res) => {
         }
     }).orderBy("create_time", "desc").limit(limit)
 
-    //const sub_communites = (await query(`SELECT * FROM communities${type}communities.parent_community_id=? AND communities.type='sub' ORDER BY communities.create_time DESC ${limit}`, parseInt(main_community[0].id)))
-
     var xml = xmlbuilder.create("result")
         .e("has_error", 0).up()
         .e("version", 1).up()
@@ -60,7 +58,7 @@ route.get("/", async (req, res) => {
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", await common.wwp.encodeIcon(community.community_id)).up()
+            .e("icon", await common.wwp.encodeIcon(community.id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("pid", community.pid).up()
@@ -76,11 +74,11 @@ route.get("/", async (req, res) => {
 
 //Creating New Communities
 route.post("/", multer().none(), async (req, res) => {
-    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' LIMIT 1`, parseInt(req.param_pack.title_id)));
+    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({type : "main"}).limit(1))[0];
 
     //Making sure the community is valid to create for
-    if (!main_community[0]) { res.sendStatus(404); console.log("[ERROR] (%s) Tried to create community. Community ID could not be found for title: %s.".red, moment().format("HH:mm:ss"), (Number(req.param_pack.title_id).toString(16))); return;}
-    if (main_community[0].allow_custom_communities != 1) {res.sendStatus(400); console.log("[ERROR] (%s) Tried to create community.".red, moment().format("HH:mm:ss")); return;}
+    if (!main_community) { res.sendStatus(404); logger.error(`Could not create community for Title ID: ${Number(req.param_pack.title_id).toString(16)} `); return; }
+    if (main_community.allow_custom_communities != 1) { res.sendStatus(400); logger.error(`${req.account[0].nnid} Tried to create a user-generated sub community for ${main_community.name}`); return; }
 
     //Getting all meta-deta about the community
     const icon = req.body.icon;
@@ -88,15 +86,43 @@ route.post("/", multer().none(), async (req, res) => {
     const description = req.body.description;
     const app_data = req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim();
 
+    if (!name || !description || !app_data || !icon) { res.sendStatus(400); logger.error(`${req.account[0].nnid} Made a faulty request to v1/communities`); return; }
+
     //Getting the real icon for the community
     const icon_jpeg = (await common.wwp.decodeIcon(icon)).slice(22, Infinity);
 
     //Creating the new community and creating the icon for it.
-    const new_community = await query("INSERT INTO communities (name, description, app_data, pid, account_id, user_community, title_ids, platform, type, parent_community_id, ingame_only, allow_custom_communities) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-    [name, description, app_data, req.account[0].pid, req.account[0].id, 1, main_community[0].title_ids, "wiiu", "sub", main_community[0].id, 0, 0]);
+    //TODO: check and see if 3ds had POST v1/communities
+    const new_community = await db_con("communities").insert(
+        {
+            name : name,
+            description : description,
+            app_data : app_data,
+
+            platform : "wiiu",
+            post_type : "all",
+            type : "sub",
+                        
+            user_community : 1,
+            ingame_only : 0,
+            special_community : 0,
+            allow_custom_communities : 0,
+
+            title_ids : main_community.title_ids,
+            parent_community_id : main_community.id,
+
+            account_id : req.account[0].id,
+            pid : req.account[0].pid
+        }
+    )
 
     //Any community that is created must be favorited by the person who created it
-    await query("INSERT INTO favorites (community_id, account_id) VALUES(?,?)", [new_community.insertId, req.account[0].id])
+    await db_con("favorites").insert(
+        {
+            community_id : main_community[0],
+            account_id : req.account[0].id
+        }
+    )
 
     fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community.insertId}.jpg`, icon_jpeg, 'base64');
 
