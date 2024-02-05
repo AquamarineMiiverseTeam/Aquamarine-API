@@ -1,42 +1,47 @@
 const express = require('express');
 const route = express.Router();
 
-const util = require('util')
 const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
 
-const fs = require('fs')
+const fs = require('fs');
+
+const logger = require('../../middleware/log');
+const db_con = require('../../../Aquamarine-Utils/database_con');
+const common = require('../../../Aquamarine-Utils/common');
 
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
-    const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
-    var type = " WHERE ";
-
-    if (req.query['type']) {
-        switch (req.query['type']) {
-            case "my":
-                type = ` WHERE account_id=${req.account[0].id} AND `;
-                break;
-            case "official":
-                type = ` WHERE user_community=0 AND `;
-                break;
-            case "favorite":
-                type = ` INNER JOIN favorites ON favorites.community_id = communities.id WHERE favorites.account_id=${req.account[0].id} AND `
-                break;
-            default:
-                type = " WHERE "
-                break;
-        }
-    }
+    const limit = (req.query['limit']) ? req.query['limit'] : 0
 
     //Grabing all communities
-    const main_community = (await query(`SELECT * FROM communities WHERE title_ids LIKE "%?%" AND type='main' LIMIT 1`, parseInt(req.param_pack.title_id)));
+    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({type : "main"}).limit(1))[0];
 
     //If theres no community, send a 404 (Not Found)
-    if (!main_community[0]) { res.sendStatus(404); return; }
+    if (!main_community) { res.sendStatus(404); logger.error(`Couldn't find main community for Title ID: ${Number(req.param_pack.title_id).toString(16)}`); return; }
 
-    const sub_communites = (await query(`SELECT * FROM communities${type}communities.parent_community_id=? AND communities.type='sub' ORDER BY communities.create_time DESC ${limit}`, parseInt(main_community[0].id)))
+    //Getting all sub communities for a game. Some game's have user made communities
+    //which we need to get, other's use only official. The api must be aware of this,
+    //and act accordingly.
+    const sub_communites = await db_con("communities").where({parent_community_id : main_community.id, type : "sub"}).where(function() {
+        if (req.query['type']) {
+            switch (req.query['type']) {
+                case "my":
+                    this.where({account_id : req.account[0].id})
+                    break;
+                case "official":
+                    this.whereNot({user_community : 1})
+                    break;
+                case "favorite":
+                    break;
+                default:
+                    break;
+            }
+        }
+    }).orderBy("create_time", "desc").limit(limit)
+
+    //const sub_communites = (await query(`SELECT * FROM communities${type}communities.parent_community_id=? AND communities.type='sub' ORDER BY communities.create_time DESC ${limit}`, parseInt(main_community[0].id)))
 
     var xml = xmlbuilder.create("result")
         .e("has_error", 0).up()

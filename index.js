@@ -21,7 +21,7 @@ app.use(access_control)
 const routes = require('./routes/index');
 app.use("/v1/posts", routes.v1.API_POSTS);
 //app.use("/v1/people", routes.v1.API_PEOPLE);
-//app.use("/v1/communities", routes.v1.API_COMMUNITIES);
+app.use("/v1/communities", routes.v1.API_COMMUNITIES);
 app.use("/v1/topics", routes.v1.API_TOPICS);
 //app.use("/v1/users", routes.v1.API_USERS);
 
