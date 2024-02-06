@@ -166,50 +166,23 @@ route.post("/:community_id.:favorite_status", async (req, res) => {
 })
 
 route.get('/:community_id/posts', async (req, res) => {
-    //Getting querys and converting them to SQL
-    const limit = (req.query['limit']) ? ` LIMIT ${req.query['limit']}` : '';
-    const search_key = (req.query['search_key']) ? ` AND search_key LIKE "%${req.query['search_key']}%"` : '';
-    const topic_tag = (req.query['topic_tag']) ? ` AND topic_tag LIKE "%${req.query['topic_tag']}%"` : '';
-    const distinct_pid = (req.query['distinct_pid']) ? ` GROUP BY pid` : '';
-    const allow_spoiler = (req.query['allow_spoiler']) ? `` : ` AND spoiler=0`;
-    const pid = (req.query['pid']) ? ` AND pid=${req.query['pid']}` : ``
-    var language_id = "";
-    var type = "";
-    var by = "";
-    
-    //If language_id isn't set to all, then find the true language id
-    if (Number(req.query['language_id']) != 254 && req.query['language_id']) { language_id = ` AND language_id=${req.query['language_id']}` }
+    //Getting querys
+    const limit = (req.query['limit']) ? Number(req.query['limit']) : 100;
+    const language_id = (req.query['language_id']) ? Number(req.query['language_id']) : 254;
 
-    //If type is given, specifiy an exact type
-    if (req.query['type']) {
-        switch (req.query['type']) {
-            case "memo":
-                type = " AND painting IS NOT NULL"
-                break;
-            case "text":
-                type = " AND body IS NOT NULL"
-                break;
-            default:
-                break;
-        }
-    }
+    const search_key = (req.query['search_key']) ? req.query['search_key'] : null;
+    const pid = (req.query['pid']) ? Number(req.query['pid']) : null;
+    const type =  (req.query['type']) ? req.query['type'] : null;
+    const by = (req.query['by']) ? req.query['by'] : null;
 
-    //If by is given, specify who
-    if (req.query['by']) {
-        switch (req.query['by']) {
-            case "self":
-                by = ` AND account_id=${req.account[0].id} `
-                break;
-            default:
-                break;
-        }
-    }
+    const distinct_pid = (req.query['distinct_pid'] == 1) ? true : false;
+    const allow_spoiler = (req.query['allow_spoiler'] == 1) ? true : false;
 
     //Community id's are usually set to 0 or 0xFFFF (4294967295) for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
     var backupcommunity_id;
     if (req.params.community_id == 0 || req.params.community_id == 4294967295) {
-        community_id = (await query('SELECT id FROM communities WHERE title_ids LIKE "%?%"', parseInt(req.param_pack.title_id)))
+        community_id = await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`)
 
         if (community_id.length <= 0) {
             community_id = "";
@@ -231,9 +204,24 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    var sql = `SELECT * FROM posts WHERE community_id in (${community_id})${search_key}${topic_tag}${allow_spoiler}${pid}${type}${by}${language_id}${distinct_pid} ORDER BY create_time DESC ${limit}`;
-    const posts = await query(sql);
-    console.log("[INFO] (%s) Found %d posts for %s.".green, moment().format("HH:mm:ss"), posts.length, (await query("SELECT name FROM communities WHERE id=?", community_id))[0].name)
+    const posts = await db_con("posts").where({community_id : community_id}).where(function() {
+        if (search_key) { this.whereLike(`search_key`, `%${search_key}%`); }
+        if (pid) { this.where({pid : pid}); }
+
+        if (type && type == "memo") { this.whereNotNull(`painting`); }
+        if (type && type == "text") { this.whereNotNull(`body`); }
+
+        //TODO: implement "following" & "friends" when we get around to relationships
+        if (by && by == "self") { this.where({account_id : req.account[0].id}); }
+
+        if (!allow_spoiler) { this.where({spoiler : 0}); }
+
+        if (language_id != 254) { this.where({language_id : language_id}); }
+
+        //TODO: figure out a way to trigger group by pid dynamically.
+    }).orderBy(`create_time`, `desc`).groupByRaw("pid").limit(limit)
+
+    logger.info(`Found ${posts.length} posts.`)
 
     var post_community_id;
     if (posts.length >= 1) {
@@ -248,47 +236,49 @@ route.get('/:community_id/posts', async (req, res) => {
         .e('request_name', 'posts').up()
         .e('topic').e('community_id', post_community_id).up().up()
         .e('posts');
-    for (let i = 0; i < posts.length; i++) {
-        const account_posted = (await query("SELECT * FROM accounts WHERE pid=?", posts[i].pid))[0]
+    for (const post of posts) {
+        const account_posted = (await db_con("accounts").where({id : post.account_id}))[0]
+        const empathy_count = (await db_con("empathies").count(`id`))[0]['count(`id`)'];
+        const empathy_added = (await db_con("empathies").where({account_id : req.account[0].id, post_id : post.id})).length
 
         xml = xml.e("post")
-            .e("app_data", posts[i].app_data).up()
-            .e("body", posts[i].body).up()
-            .e("community_id", posts[i].community_id).up()
+            .e("app_data", post.app_data).up()
+            .e("body", post.body).up()
+            .e("community_id", post.community_id).up()
             .e('mii', account_posted.mii).up()
             .e('mii_face_url', `http://mii-images.account.nintendo.net/${account_posted.mii_hash}_normal_face.png`).up()
-            .e("country_id", posts[i].country_id).up()
-            .e("created_at", moment(posts[i].create_time).format("YYYY-MM-DD HH:MM:SS")).up()
-            .e("feeling_id", posts[i].feeling_id).up()
-            .e("id", posts[i].id).up()
-            .e("is_autopost", posts[i].is_autopost).up()
+            .e("country_id", post.country_id).up()
+            .e("created_at", moment(post.create_time).format("YYYY-MM-DD HH:MM:SS")).up()
+            .e("feeling_id", post.feeling_id).up()
+            .e("id", post.id).up()
+            .e("is_autopost", post.is_autopost).up()
             .e("is_community_private_autopost", "0").up()
-            .e("is_spoiler", posts[i].spoiler).up()
-            .e("is_app_jumpable", posts[i].is_app_jumpable).up()
-            .e("empathy_count", (await query("SELECT * FROM empathies WHERE post_id=?", posts[i].id)).length).up()
-            .e('empathy_added', (await query(`SELECT * FROM empathies WHERE post_id=${posts[i].id} AND account_id=${req.account[0].id}`)).length).up()
-            .e("language_id", posts[i].language_id).up()
+            .e("is_spoiler", post.spoiler).up()
+            .e("is_app_jumpable", post.is_app_jumpable).up()
+            .e("empathy_count", empathy_count).up()
+            .e('empathy_added', empathy_added).up()
+            .e("language_id", post.language_id).up()
             .e("number", 1).up();
-        if (posts[i].painting) {
+        if (post.painting) {
             xml = xml.e("painting")
                 .e("format", "tga").up()
-                .e("content", posts[i].painting).up()
-                .e("size", posts[i].painting.length).up()
+                .e("content", post.painting).up()
+                .e("size", post.painting.length).up()
                 .e("url", "https://s3.amazonaws.com/olv-public/pap/WVW69koebmETvBVqm1").up()
                 .up();
         }
-        if (posts[i].topic_tag) {
+        if (post.topic_tag) {
             xml = xml.e('topic_tag')
-                .e('name', posts[i].topic_tag).up()
-                .e('title_id', posts[i].title_id).up().up()
+                .e('name', post.topic_tag).up()
+                .e('title_id', post.title_id).up().up()
         }
-        xml = xml.e("pid", posts[i].pid).up()
-            .e("platform_id", posts[i].platform_id).up()
-            .e("region_id", posts[i].region_id).up()
+        xml = xml.e("pid", post.pid).up()
+            .e("platform_id", post.platform_id).up()
+            .e("region_id", post.region_id).up()
             //TODO: add proper reply count once replies are working
             .e("reply_count", 0).up()
             .e("screen_name", account_posted.mii_name).up()
-            .e("title_id", posts[i].title_id).up().up()
+            .e("title_id", post.title_id).up().up()
     }
 
     xml = xml.end({pretty : true, allowEmpty : true});
