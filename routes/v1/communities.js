@@ -51,7 +51,7 @@ route.get("/", async (req, res) => {
         const community = sub_communites[i];
 
         if (req.query['type'] == "favorite") {
-            community.id = community.community_id;
+            community.id = community.id
         }
 
         xml.e("community")
@@ -124,45 +124,45 @@ route.post("/", multer().none(), async (req, res) => {
         }
     )
 
-    fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community.insertId}.jpg`, icon_jpeg, 'base64');
+    fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community[0]}.jpg`, icon_jpeg, 'base64');
 
     //Finally sending a 200 (OK) as a result
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-create");
     res.sendStatus(200);
+
+    logger.info(`Created New User-generated Community! Parent Community: ${main_community.name}`)
 })
 
-route.post("/:community_id.favorite", async (req, res) => {
+route.post("/:community_id.:favorite_status", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = req.params.community_id;
-    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
+    const community = (await db_con("communities").where({id : community_id}))[0];
 
     //If no community exists, send 404
-    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
+    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
 
-    //Getting if a favorite exists for this community
-    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
+    //Checking which method to use
+    if (req.params.favorite_status == "unfavorite") {
+        await db_con("favorites").del().where({
+            community_id : community_id,
+            account_id : req.account[0].id
+        });
 
-    await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
+        res.sendStatus(200);
+    } else if (req.params.favorite_status == "favorite") {
+        //Making sure a favorite from this user doesn't already exist.
+        const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
+        if (existing_favorite) {logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return;}
 
-    //res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
-    res.sendStatus(200);
-})
+        await db_con("favorites").insert({
+            community_id : community_id,
+            account_id : req.account[0].id
+        })
 
-route.post("/:community_id.unfavorite", async (req, res) => {
-    //Getting the correct community to favorite
-    const community_id = req.params.community_id;
-    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
-
-    //If no community exists, send 404
-    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
-
-    //Getting if a favorite exists for this community
-    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
-
-    await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
-
-    //res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
-    res.sendStatus(200);
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
+        res.sendStatus(200);
+    }
 })
 
 route.get('/:community_id/posts', async (req, res) => {
