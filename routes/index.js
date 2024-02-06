@@ -7,6 +7,10 @@ module.exports = {
         {
             path : "/v1/topics",
             route : require("./v1/topics")
+        },
+        {
+            path : "/v1/posts",
+            route : require("./v1/posts")
         }
     ],
     v2 : [

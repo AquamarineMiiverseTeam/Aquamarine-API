@@ -38,8 +38,8 @@ route.post("/", multer().none(), async (req, res) => {
     if (!req.body.owns_title) { owns_title = 1; }
 
     //If no body or painting exists, what is there to post??
-    if (!body && !painting) { res.sendStatus(400); return; }
-    if (!feeling_id || !language_id || !community_id || !is_spoiler || !is_autopost || !is_app_jumpable) { res.sendStatus(400); return;}
+    if (!body && !painting) { res.sendStatus(400); logger.error("No body or painting was inputed."); return; }
+    if (!feeling_id || !language_id || !community_id || !is_spoiler || !is_autopost || !is_app_jumpable) { res.sendStatus(400); logger.error("Faulty post create request."); return;}
 
     //Checking if the community id is 0, if it is, then get the community that shares the requests parampack title id.
     if (community_id == 0) {
@@ -66,8 +66,8 @@ route.post("/", multer().none(), async (req, res) => {
     //Checking to see if the post is of the correct type for community
     var community = (await db_con("communities").where({id : community_id}))[0]
 
-    if (community.post_type == "text" && painting) { res.sendStatus(400); return;}
-    if (community.post_type == "memo" && body) { res.sendStatus(400); return;}
+    if (community.post_type == "text" && painting) { res.sendStatus(400); logger.error("Text only community!"); return;}
+    if (community.post_type == "memo" && body) { res.sendStatus(400); logger.error("Memo only community!"); return;}
     if (community.type == "announcement" && req.account[0].admin == 0) { res.sendStatus(503); logger.error(`${req.account[0].nnid} tried to post to ${community.name}`); return; }
 
     //Create the post insert data
@@ -107,10 +107,12 @@ route.post("/", multer().none(), async (req, res) => {
 
     if (painting) {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
+        logger.info(`Saved painting.`)
     }
 
     if (screenshot) {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${insert_id}.jpg`, screenshot, 'base64');
+        logger.info(`Saved screenshot.`)
     }
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::New-post");
