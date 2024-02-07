@@ -133,38 +133,6 @@ route.post("/", multer().none(), async (req, res) => {
     logger.info(`Created New User-generated Community! Parent Community: ${main_community.name}`)
 })
 
-route.post("/:community_id.:favorite_status", async (req, res) => {
-    //Getting the correct community to favorite
-    const community_id = req.params.community_id;
-    const community = (await db_con("communities").where({id : community_id}))[0];
-
-    //If no community exists, send 404
-    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
-
-    //Checking which method to use
-    if (req.params.favorite_status == "unfavorite") {
-        await db_con("favorites").del().where({
-            community_id : community_id,
-            account_id : req.account[0].id
-        });
-
-        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
-        res.sendStatus(200);
-    } else if (req.params.favorite_status == "favorite") {
-        //Making sure a favorite from this user doesn't already exist.
-        const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
-        if (existing_favorite) {logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return;}
-
-        await db_con("favorites").insert({
-            community_id : community_id,
-            account_id : req.account[0].id
-        })
-
-        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
-        res.sendStatus(200);
-    }
-})
-
 route.get('/:community_id/posts', async (req, res) => {
     //Getting querys
     const limit = (req.query['limit']) ? Number(req.query['limit']) : 100;
@@ -288,27 +256,66 @@ route.get('/:community_id/posts', async (req, res) => {
     res.send(xml)
 })
 
+route.post("/:community_id.:favorite_status", async (req, res) => {
+    //Getting the correct community to favorite
+    const community_id = req.params.community_id;
+    const community = (await db_con("communities").where({id : community_id}))[0];
+
+    //If no community exists, send 404
+    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
+
+    //Checking which method to use
+    if (req.params.favorite_status == "unfavorite") {
+        await db_con("favorites").del().where({
+            community_id : community_id,
+            account_id : req.account[0].id
+        });
+
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
+        res.sendStatus(200);
+    } else if (req.params.favorite_status == "favorite") {
+        //Making sure a favorite from this user doesn't already exist.
+        const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
+        if (existing_favorite) {logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return;}
+
+        await db_con("favorites").insert({
+            community_id : community_id,
+            account_id : req.account[0].id
+        })
+
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
+        res.sendStatus(200);
+    }
+})
+
 route.post("/:community_id/favorite", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = req.params.community_id;
-    const community = (await query("SELECT * FROM communities WHERE id=?", community_id));
+    const community = (await db_con("communities").where({id : community_id}))[0];
 
     //If no community exists, send 404
-    if (community.length == 0) {console.log("[ERROR] (%s) Community could not be found for ID: %s.".red, moment().format("HH:mm:ss"), community_id); res.sendStatus(404); return;}
+    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
+    const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
 
-    //Getting if a favorite exists for this community
-    const favorite = (await query("SELECT * FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id]))
-
-    if (favorite.length == 0) {
-        await query("INSERT INTO favorites (community_id, account_id) VALUES(?, ?)", [community_id, req.account[0].id])
-
-        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
-        res.status(200).send({result : "created"});
-    } else {
-        await query("DELETE FROM favorites WHERE community_id=? AND account_id=?", [community_id, req.account[0].id])
+    //Checking which method to use
+    if (existing_favorite) {
+        await db_con("favorites").del().where({
+            community_id : community_id,
+            account_id : req.account[0].id
+        });
 
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
-        res.status(200).send({result : "deleted"});
+        res.send({result : "deleted"});
+    } else if (!existing_favorite) {
+        //Making sure a favorite from this user doesn't already exist.
+
+        await db_con("favorites").insert({
+            community_id : community_id,
+            account_id : req.account[0].id
+        })
+
+        res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
+        res.send({result : "created"});
     }
 })
 
@@ -321,7 +328,9 @@ route.post("/:community_id/settings", multer().none(), async (req, res) => {
     const new_array = JSON.parse(req.account[0].community_settings)
     new_array[req.params.community_id] = req.body.view_setting
 
-    await query("UPDATE accounts SET community_settings=? WHERE id=?", [JSON.stringify(new_array), req.account[0].id])
+    await db_con("accounts").update({
+        community_settings : JSON.stringify(new_array),
+    }).where({id : req.account[0].id})
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-set_view");
     res.sendStatus(200)
