@@ -11,6 +11,10 @@ module.exports = {
         {
             path : "/v1/posts",
             route : require("./v1/posts")
+        },
+        {
+            path : "/v1/people",
+            route : require("./v1/people")
         }
     ],
     v2 : [

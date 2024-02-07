@@ -1,75 +1,107 @@
 const express = require('express');
 const route = express.Router();
-
-const util = require('util')
-const xmlbuilder = require('xmlbuilder');
 const multer = require('multer');
 const moment = require('moment');
-
 const axios = require('axios');
-
 const crypto = require('crypto');
+
+const logger = require('../../middleware/log');
+const db_con = require('../../../Aquamarine-Utils/database_con');
 
 route.post("/", multer().none(), async (req, res) => {
     //Checking to make sure request doesn't already have an account attached
-    if ((await query("SELECT id FROM accounts WHERE nnid=?", req.body.nnid)).length >= 1) {res.sendStatus(403); console.log(`[ERROR] (%s) Account is already created for ${req.body.nnid}.`.red, moment().format("HH:mm:ss")); return;}
+    if ((await db_con("accounts").where({nnid : req.body.nnid}))[0]) { res.sendStatus(403); logger.error(`Account is already created with the Network ID of ${req.body.nnid}`); return; }
 
     //Grabbing neccesary login details
-    var nnid = req.body.nnid;
-    var service_token = req.service_token;
-    var language = req.body.language;
-    var country = req.body.country;
-    var game_experience = req.body.game_experience;
+    const nnid = req.body.nnid;
+    const service_token = req.service_token;
+    const language = req.body.language;
+    const country = req.body.country;
+    const game_experience = req.body.game_experience;
+    const password = req.body.password;
+
+    if (!nnid || !service_token || !language || !country || !game_experience || !password) { res.sendStatus(400); logger.error(`Invalid request for making ${nnid}`); return; }
 
     //Hashing and Salting the password
-    var salt = crypto.randomBytes(8).toString('hex');
-    var passwordHash = crypto.createHash('sha256').update(req.body.password + salt).digest('hex');
+    const salt = crypto.randomBytes(8).toString('hex');
+    const passwordHash = crypto.createHash('sha256').update(password + salt).digest('hex');
 
     var account_json;
 
     //Getting the full account data.
     try {
-        account_json = (await axios.get("https://nnidlt.murilo.eu.org/api.php?env=production&user_id=" + nnid)).data;
+        logger.info(`Making request for ${nnid}..`)
+        account_json = (await axios.get(`https://nnidlt.murilo.eu.org/api.php?env=production&user_id=${nnid}`)).data;
+        logger.info(`Got request for ${nnid}`)
     } catch (error) {
-        console.log("[ERROR] (%s) %s".red, moment().format("HH:mm:ss"), error.response.data);
-        res.status(error.response.status);
-        res.send(error.response.data); return;
+        logger.error(`${error.response.data}`)
+        res.status(error.response.data).send({success : 0, error : error.response.data}); 
+        return;
     }
 
     //Creating account in database
-    await query(`INSERT INTO accounts (pid, nnid, mii, mii_name, mii_hash, bio, admin, banned, ${req.platform}_service_token, password_hash, password_salt, game_experience, language, country, relationship_visible, allow_friend, empathy_notification, pronouns, community_settings) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, 
-    [account_json.pid, nnid, account_json.data, account_json.name, account_json.images.hash, "User has not set a bio yet..", 0, 0, service_token, passwordHash, salt, game_experience, language, country, 1, 0, 1, "they/them", "{}"]);
-    
-    if (req.platform == "3ds") {
-        res.sendStatus(200);
+    const new_account_id = (await db_con("accounts").insert({
+        pid : account_json.pid,
+        nnid : nnid,
+
+        mii : account_json.data,
+        mii_name : account_json.name,
+        mii_hash : account_json.images.hash,
+
+        password_hash : passwordHash,
+        password_salt : salt,
+
+        game_experience : game_experience,
+        language : language,
+        country : country
+    }))[0]
+    logger.info(`Created database account for ${nnid}`)
+
+    if (req.platform === "3ds") {
+        await db_con("accounts").update({
+            "3ds_service_token" : req.service_token
+        }).where({id : new_account_id})
     } else {
-        res.sendStatus(200);
+        await db_con("accounts").update({
+            wiiu_service_token : req.service_token
+        }).where({id : new_account_id})
     }
 
-    console.log("[INFO] (%s) Created account for %s.".blue, moment().format("HH:mm:ss"), nnid)
+    logger.info(`Updated service token for ${nnid}`)
+    
+    res.status(200).send({success : 1})
+
+    logger.info(`Successfully created new account for ${nnid}!`)
 })
 
 route.post('/login', multer().none(), async (req, res) => {
-    var nnid = req.body.nnid;
-    var service_token = req.service_token;
+    const nnid = req.body.nnid;
+    const service_token = req.service_token;
+    const password = req.body.password;
 
-    var accounts = await query("SELECT * FROM accounts WHERE nnid=?", nnid);
+    const account = (await db_con("accounts").where({nnid : nnid}))[0];
 
     //Error checking
-    if (accounts.length <= 0) { res.sendStatus(404); console.log("[ERROR] (%s) No account found for %s.".red, moment().format("HH:mm:ss"), nnid); return; }
-    if (accounts.length > 1) { res.sendStatus(500); console.log("[ERROR] (%s) Something has gone horribly wrong. Pls fix db :)\nError on NNID %s".red, moment().format("HH:mm:ss"), nnid); return; }
+    if (!account) { res.sendStatus(404); logger.error(`No account found for nnid: ${nnid}`); return; }
 
-    //Authenticating the password
-    var account = accounts[0];
-    var passwordHash = crypto.createHash('sha256').update(req.body.password + account.password_salt).digest('hex');
+    const passwordHash = crypto.createHash('sha256').update(password + account.password_salt).digest('hex');
 
     //Adding the new token to the database!
     if (passwordHash == account.password_hash) {
-        await query(`UPDATE accounts SET ${req.platform}_service_token=? WHERE id=?`, [service_token, account.id]);
+        if (req.platform === "3ds") {
+            await db_con("accounts").update({
+                "3ds_service_token" : service_token
+            }).where({id : account.id})
+        } else {
+            await db_con("accounts").update({
+                wiiu_service_token : service_token
+            }).where({id : account.id})
+        }
         
-        res.sendStatus(200)
+        res.sendStatus(200);
+        logger.info(`Successfully logged into ${nnid}`)
     } else {
-        console.log("Password Mismatch".red)
+        logger.error(`Password Mismatch!`)
         res.sendStatus(401);
     }
 })
