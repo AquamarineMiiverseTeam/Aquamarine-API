@@ -1,14 +1,15 @@
 const express = require('express');
 const route = express.Router();
 
-const util = require('util')
+const db_con = require('../../../Aquamarine-Utils/database_con');
+
 const xmlbuilder = require('xmlbuilder');
+const common = require('../../../Aquamarine-Utils/common');
 
 route.get("/:user_pid/notifications", async (req, res) => {
     //res.setHeader("content-type", "application/xml")
 
-    const sql = `SELECT * FROM accounts WHERE pid=?`
-    var notificationAccount = (await query(sql, req.params.user_pid));
+    var notificationAccount = (await db_con("accounts").where({pid : req.params.user_pid}))
 
     if (notificationAccount[0]) {
         const notifications = await common.notification.getAccountUnreadNotifications(notificationAccount)
