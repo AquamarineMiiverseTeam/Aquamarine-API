@@ -10,7 +10,11 @@ async function log_api_usage(req, res, next) {
     await db_con("api_calls").insert({
         url: req.path,
         query: req.query,
-        account_id: account_id
+        account_id: account_id,
+        platform_id: req.param_pack.platform_id,
+        rating_organization: req.param_pack.rating_organization,
+        transferable_id: String(req.param_pack.transferable_id),
+        title_id: (parseInt(req.param_pack.title_id)).toString(16)
     })
 
     next();
