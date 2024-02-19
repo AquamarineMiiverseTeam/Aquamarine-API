@@ -17,7 +17,8 @@ async function log_api_usage(req, res, next) {
         title_id: (parseInt(req.param_pack.title_id)).toString(16),
         region_id: req.param_pack.region_id,
         language_id: req.param_pack.language_id,
-        tz_name: req.param_pack.tz_name
+        tz_name: req.param_pack.tz_name,
+        area_id: req.param_pack.area_id
     })
 
     next();
