@@ -14,7 +14,10 @@ async function log_api_usage(req, res, next) {
         platform_id: req.param_pack.platform_id,
         rating_organization: req.param_pack.rating_organization,
         transferable_id: String(req.param_pack.transferable_id),
-        title_id: (parseInt(req.param_pack.title_id)).toString(16)
+        title_id: (parseInt(req.param_pack.title_id)).toString(16),
+        region_id: req.param_pack.region_id,
+        language_id: req.param_pack.language_id,
+        tz_name: req.param_pack.tz_name
     })
 
     next();
