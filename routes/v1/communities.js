@@ -138,7 +138,7 @@ route.get('/:community_id/posts', async (req, res) => {
     const limit = (req.query['limit']) ? Number(req.query['limit']) : 100;
     const language_id = (req.query['language_id']) ? Number(req.query['language_id']) : 254;
 
-    const search_key = (req.query['search_key']) ? req.query['search_key'] : null;
+    const search_key = (req.query['search_key']) ? String(req.query['search_key']) : null;
     const pid = (req.query['pid']) ? Number(req.query['pid']) : null;
     const type =  (req.query['type']) ? req.query['type'] : null;
     const by = (req.query['by']) ? req.query['by'] : null;
@@ -146,48 +146,76 @@ route.get('/:community_id/posts', async (req, res) => {
     const distinct_pid = (req.query['distinct_pid'] == 1) ? true : false;
     const allow_spoiler = (req.query['allow_spoiler'] == 1) ? true : false;
 
-    //Community id's are usually set to 0 or 0xFFFF (4294967295) for in-game post grabbing, so, we have to get them by the title id from the parampack
+    //Community id's are usually set to 0 or 0xFFFFFFFF (4294967295) for in-game post grabbing, so, we have to get them by the title id from the parampack
     var community_id;
     var backupcommunity_id;
-    if (req.params.community_id == 0 || req.params.community_id == 4294967295) {
-        community_id = await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`)
-
-        if (community_id.length <= 0) {
-            community_id = "";
-            backupcommunity_id = "";
-        } else if (community_id.length == 1) {
-            community_id = community_id[0].id;
-            backupcommunity_id = community_id;
-        } else {
-            backupcommunity_id = community_id[0].id;
-            var tempcommunityid = "";
-            for (var h in community_id) {
-                tempcommunityid += `'${community_id[h].id}', `;
-            }
-            community_id = tempcommunityid.slice(0, -2);
-        }
+    if (req.params.community_id == 0) {
+        community_id = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`))[0].id
     } else { community_id = req.params.community_id }
+
+    if (req.params.community_id == 4294967295) {community_id = 19887}
 
     //If community doesn't exist, send a 404 (Not Found)
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
 
     //Grabbing posts from DB with parameters
-    const posts = await db_con("posts").where({community_id : community_id}).where(function() {
-        if (search_key) { this.whereLike(`search_key`, `%${search_key}%`); }
-        if (pid) { this.where({pid : pid}); }
-
-        if (type && type == "memo") { this.whereNotNull(`painting`); }
-        if (type && type == "text") { this.whereNotNull(`body`); }
-
-        //TODO: implement "following" & "friends" when we get around to relationships
-        if (by && by == "self") { this.where({account_id : req.account[0].id}); }
-
-        if (!allow_spoiler) { this.where({spoiler : 0}); }
-
-        if (language_id != 254) { this.where({language_id : language_id}); }
-
-        //TODO: figure out a way to trigger group by pid dynamically.
-    }).orderBy(`create_time`, `desc`).groupByRaw("pid").limit(limit)
+    const posts = await db_con("posts")
+    .select("*")
+    .from(function() {
+        this.select("p.*")
+            .from("posts as p")
+            .innerJoin(function() {
+                this.select("account_id")
+                    .max("create_time as latest_create_time")
+                    .from("posts")
+                    .where({community_id : community_id})
+                    .where(function() {
+                        // Your existing conditions here
+                        if (search_key) {
+                            let search_key_array = search_key.split(",")
+                            if (search_key_array.length == 1) {
+                                this.where("search_key", "like", `%${JSON.stringify(search_key)}%`); 
+                            } else {
+                                this.where("search_key", "like", `%${JSON.stringify(search_key_array)}%`); 
+                            }
+                        }
+                        if (pid) { this.where({ pid: pid }); }
+                        if (type && type === "memo") { this.whereNotNull("painting"); }
+                        if (type && type === "text") { this.whereNotNull("body"); }
+                        if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
+                        if (!allow_spoiler) { this.where({ spoiler: 0 }); }
+                        if (language_id !== 254) { this.where({ language_id: language_id }); }
+                    })
+                    .groupBy("account_id")
+                    .as("latest_posts");
+            }, function() {
+                this.on("p.account_id", "=", "latest_posts.account_id")
+                    .andOn("p.create_time", "=", "latest_posts.latest_create_time");
+            })
+            .where(function() {
+                // Your existing conditions here
+                if (search_key) {
+                    let search_key_array = search_key.split(",")
+                    if (search_key_array.length == 1) {
+                        this.where("search_key", "like", `%${JSON.stringify(search_key)}%`); 
+                    } else {
+                        this.where("search_key", "like", `%${JSON.stringify(search_key_array)}%`); 
+                    }
+                }
+                if (pid) { this.where({ pid: pid }); }
+                if (type && type === "memo") { this.whereNotNull("painting"); }
+                if (type && type === "text") { this.whereNotNull("body"); }
+                if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
+                if (!allow_spoiler) { this.where({ spoiler: 0 }); }
+                if (language_id !== 254) { this.where({ language_id: language_id }); }
+            })
+            .as("subquery_alias"); // Adding alias for the derived table
+        if (req.query['distinct_pid'] == 1) {
+            this.groupBy("p.account_id"); // Conditionally include groupBy based on condition
+        }
+    })
+    .orderBy("create_time", "desc")
+    .limit(limit)
 
     logger.info(`Found ${posts.length} posts.`)
 
@@ -294,7 +322,7 @@ route.post("/:community_id/favorite", async (req, res) => {
     const community = (await db_con("communities").where({id : community_id}))[0];
 
     //If no community exists, send 404
-    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
+    if (!community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
     const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
 
     //Checking which method to use

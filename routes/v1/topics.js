@@ -11,7 +11,7 @@ route.get("/", async (req, res) => {
     //People is the max number of people the Wii U menu requests
     const people = req.query['people'];
 
-    const communities = await db_con.select("*").from("communities AS c").where({platform : "wiiu", type : "main"}).orderBy(function() {
+    const communities = await db_con.select("*").from("communities AS c").where({ platform: "wiiu", type: "main" }).orderBy(function () {
         this.count("community_id").from("posts").whereRaw("community_id = `c`.id").whereBetween("create_time", [moment().subtract(5, "days").format("YYYY-MM-DD HH:mm:ss"), moment().add(1, "day").format("YYYY-MM-DD HH:mm:ss")])
     }, "desc").limit(10)
 
@@ -29,12 +29,24 @@ route.get("/", async (req, res) => {
     var account_ids = []
     //Looping through every single community
     for (const community of communities) {
-        const favorites = (await db_con("favorites").count("id").where({community_id : community.id}))[0]["count(`id`)"]
-        const posts = await db_con("posts").where({community_id : community.id}).where(function() {
-            for (const account_id of account_ids) {
-                this.whereNot({account_id : account_id})
-            }
-        }).groupBy("account_id")
+        const favorites = (await db_con("favorites").count("id").where({ community_id: community.id }))[0]["count(`id`)"]
+        const latestPostsSubquery = db_con('posts')
+            .select('account_id')
+            .max('posts.create_time as latest_post_date')
+            .where('community_id', community.id)
+            .whereNotIn('account_id', account_ids)
+            .groupBy('account_id')
+            .as('latest_posts');
+
+        const distinctPostsQuery = db_con('posts as p')
+            .select('p.*')
+            .join(latestPostsSubquery, function () {
+                this.on('p.account_id', '=', 'latest_posts.account_id')
+                    .andOn('p.create_time', '=', 'latest_posts.latest_post_date');
+            });
+
+        // Execute the query
+        const posts = await distinctPostsQuery;
 
         //Every community is code_named a topic
         xml = xml.e('topic')
@@ -54,8 +66,8 @@ route.get("/", async (req, res) => {
         for (const post of posts) {
             account_ids.push(post.account_id);
 
-            const person = (await db_con("accounts").select("*").where({id : post.account_id}))[0]
-            const empathy_count = (await db_con("empathies").count("id").where({post_id : post.id}))[0]['count(`id`)']
+            const person = (await db_con("accounts").select("*").where({ id: post.account_id }))[0]
+            const empathy_count = (await db_con("empathies").count("id").where({ post_id: post.id }))[0]['count(`id`)']
             //Eventually when replies are implemented, this will be an actual count, for now, it's 0
             const reply_count = 0;
 

@@ -31,11 +31,11 @@ route.post("/", multer().none(), async (req, res) => {
     const app_data = (req.body.app_data) ? req.body.app_data.replace(/\0/g, "").replace(/\r?\n|\r/g, "").trim() : "";
     const topic_tag = (req.body.topic_tag) ? req.body.topic_tag : "";
     const search_key = (req.body.search_key) ? req.body.search_key : "";
-    const title_owned = (req.body.owns_title == 1) ? 1 : 0;
+    var title_owned = (req.body.owns_title == 1) ? 1 : 0;
     var platform;
 
-    //If there is no owns_title field in the formdata, it must be from ingame, in that case, set owns_title to true
-    if (!req.body.owns_title) { owns_title = 1; }
+    //If there is no owns_title field in the formdata, it must be from in-game, in that case, set owns_title to true
+    if (!req.body.owns_title) { title_owned = 1; }
 
     //If no body or painting exists, what is there to post??
     if (!body && !painting) { res.sendStatus(400); logger.error("No body or painting was inputed."); return; }
@@ -99,7 +99,7 @@ route.post("/", multer().none(), async (req, res) => {
     if (screenshot) {insert_data.screenshot = screenshot}
     if (app_data) {insert_data.app_data = app_data}
     if (topic_tag) {insert_data.topic_tag = topic_tag}
-    if (search_key) {insert_data.search_key = search_key}
+    if (search_key) {insert_data.search_key = JSON.stringify(search_key)}
 
     const insert_id = (await db_con("posts").insert(insert_data))[0];
 
@@ -122,7 +122,7 @@ route.post("/", multer().none(), async (req, res) => {
 
 route.post("/:post_id/empathies", async (req, res) => {
     const post_id = req.params.post_id;
-    const post = (await db_con("posts").where({id : Number(post_id)}))[0]
+    const post = (await db_con("posts").where({id : post_id}))[0]
 
     if (!post) { res.sendStatus(404); return; }
     if (post.account_id == req.account[0].id) { res.sendStatus(403); return;}
@@ -153,7 +153,7 @@ route.post("/:post_id/empathies", async (req, res) => {
         logger.info(`${req.account[0].nnid} empathied post: ${post_id}!`);
 
         //Create a new notification
-        await common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', `http://mii-images.account.nintendo.net/${req.account[0].mii_hash}_normal_face.png`, `gave a Yeah to`, new_empathy[0], `/posts/${post.id}`)
+        await common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', new_empathy[0], `/posts/${post.id}`, post.id)
     }
 })
 

@@ -12,9 +12,11 @@ const db_con = require('../Aquamarine-Utils/database_con');
 //Grab logger and auth middleware and use it. (Logs all incoming HTTP/HTTPS requests)
 const auth = require('../Aquamarine-Utils/middleware/auth_middleware');
 const access_control = require("./middleware/access_control")
+const api_logger = require("./middleware/api_logger")
 
 app.use(logger.http_log);
 app.use(auth);
+app.use(api_logger)
 app.use(access_control);
 
 const routes = require('./routes/index');
