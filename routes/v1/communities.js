@@ -16,7 +16,7 @@ route.get("/", async (req, res) => {
     const limit = (req.query['limit']) ? req.query['limit'] : 100
 
     //Grabing all communities
-    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({type : "main"}).limit(1))[0];
+    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
 
     //If theres no community, send a 404 (Not Found)
     if (!main_community) { res.sendStatus(404); logger.error(`Couldn't find main community for Title ID: ${Number(req.param_pack.title_id).toString(16)}`); return; }
@@ -24,14 +24,14 @@ route.get("/", async (req, res) => {
     //Getting all sub communities for a game. Some game's have user made communities
     //which we need to get, other's use only official. The api must be aware of this,
     //and act accordingly.
-    const sub_communites = await db_con("communities").where({parent_community_id : main_community.id, type : "sub"}).where(function() {
+    const sub_communites = await db_con("communities").where({ parent_community_id: main_community.id, type: "sub" }).where(function () {
         if (req.query['type']) {
             switch (req.query['type']) {
                 case "my":
-                    this.where({account_id : req.account[0].id})
+                    this.where({ account_id: req.account[0].id })
                     break;
                 case "official":
-                    this.whereNot({user_community : 1})
+                    this.whereNot({ user_community: 1 })
                     break;
                 case "favorite":
                     break;
@@ -65,7 +65,7 @@ route.get("/", async (req, res) => {
             .e("is_user_community", community.user_community).up().up();
     }
 
-    xml = xml.up().end({pretty : true, allowEmpty : true})
+    xml = xml.up().end({ pretty: true, allowEmpty: true })
 
     res.setHeader('Content-Type', "application/xml")
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-retrieve");
@@ -74,7 +74,7 @@ route.get("/", async (req, res) => {
 
 //Creating New Communities
 route.post("/", multer().none(), async (req, res) => {
-    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({type : "main"}).limit(1))[0];
+    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
 
     //Making sure the community is valid to create for
     if (!main_community) { res.sendStatus(404); logger.error(`Could not create community for Title ID: ${Number(req.param_pack.title_id).toString(16)} `); return; }
@@ -95,32 +95,32 @@ route.post("/", multer().none(), async (req, res) => {
     //TODO: check and see if 3ds had POST v1/communities
     const new_community = await db_con("communities").insert(
         {
-            name : name,
-            description : description,
-            app_data : app_data,
+            name: name,
+            description: description,
+            app_data: app_data,
 
-            platform : "wiiu",
-            post_type : "all",
-            type : "sub",
-                        
-            user_community : 1,
-            ingame_only : 0,
-            special_community : 0,
-            allow_custom_communities : 0,
+            platform: "wiiu",
+            post_type: "all",
+            type: "sub",
 
-            title_ids : main_community.title_ids,
-            parent_community_id : main_community.id,
+            user_community: 1,
+            ingame_only: 0,
+            special_community: 0,
+            allow_custom_communities: 0,
 
-            account_id : req.account[0].id,
-            pid : req.account[0].pid
+            title_ids: main_community.title_ids,
+            parent_community_id: main_community.id,
+
+            account_id: req.account[0].id,
+            pid: req.account[0].pid
         }
     )
 
     //Any community that is created must be favorited by the person who created it
     await db_con("favorites").insert(
         {
-            community_id : main_community[0],
-            account_id : req.account[0].id
+            community_id: main_community[0],
+            account_id: req.account[0].id
         }
     )
 
@@ -140,7 +140,7 @@ route.get('/:community_id/posts', async (req, res) => {
 
     const search_key = (req.query['search_key']) ? String(req.query['search_key']) : null;
     const pid = (req.query['pid']) ? Number(req.query['pid']) : null;
-    const type =  (req.query['type']) ? req.query['type'] : null;
+    const type = (req.query['type']) ? req.query['type'] : null;
     const by = (req.query['by']) ? req.query['by'] : null;
 
     const distinct_pid = (req.query['distinct_pid'] == 1) ? true : false;
@@ -153,69 +153,56 @@ route.get('/:community_id/posts', async (req, res) => {
         community_id = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`))[0].id
     } else { community_id = req.params.community_id }
 
-    if (req.params.community_id == 4294967295) {community_id = 19887}
+    if (req.params.community_id == 4294967295) { community_id = 19887 }
 
     //If community doesn't exist, send a 404 (Not Found)
-    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return;}
+    if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return; }
 
     //Grabbing posts from DB with parameters
-    const posts = await db_con("posts")
-    .select("*")
-    .from(function() {
-        this.select("p.*")
-            .from("posts as p")
-            .innerJoin(function() {
-                this.select("account_id")
-                    .max("create_time as latest_create_time")
-                    .from("posts")
-                    .where({community_id : community_id})
-                    .where(function() {
-                        // Your existing conditions here
-                        if (search_key) {
-                            let search_key_array = search_key.split(",")
-                            if (search_key_array.length == 1) {
-                                this.where("search_key", "like", `%${JSON.stringify(search_key)}%`); 
-                            } else {
-                                this.where("search_key", "like", `%${JSON.stringify(search_key_array)}%`); 
-                            }
-                        }
-                        if (pid) { this.where({ pid: pid }); }
-                        if (type && type === "memo") { this.whereNotNull("painting"); }
-                        if (type && type === "text") { this.whereNotNull("body"); }
-                        if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
-                        if (!allow_spoiler) { this.where({ spoiler: 0 }); }
-                        if (language_id !== 254) { this.where({ language_id: language_id }); }
-                    })
-                    .groupBy("account_id")
-                    .as("latest_posts");
-            }, function() {
-                this.on("p.account_id", "=", "latest_posts.account_id")
-                    .andOn("p.create_time", "=", "latest_posts.latest_create_time");
+    const postsQuery = db_con("posts");
+
+    // Check if the feature should be enabled
+    if (req.query['distinct_pid']) {
+        postsQuery.select('*')
+            .from(function () {
+                this.select('account_id', db_con.raw('MAX(create_time) as latest_create_time'))
+                    .from('posts')
+                    .where({ community_id: community_id })
+                    .groupBy('account_id')
+                    .as('latest_posts');
             })
-            .where(function() {
-                // Your existing conditions here
-                if (search_key) {
-                    let search_key_array = search_key.split(",")
-                    if (search_key_array.length == 1) {
-                        this.where("search_key", "like", `%${JSON.stringify(search_key)}%`); 
-                    } else {
-                        this.where("search_key", "like", `%${JSON.stringify(search_key_array)}%`); 
-                    }
-                }
-                if (pid) { this.where({ pid: pid }); }
-                if (type && type === "memo") { this.whereNotNull("painting"); }
-                if (type && type === "text") { this.whereNotNull("body"); }
-                if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
-                if (!allow_spoiler) { this.where({ spoiler: 0 }); }
-                if (language_id !== 254) { this.where({ language_id: language_id }); }
-            })
-            .as("subquery_alias"); // Adding alias for the derived table
-        if (req.query['distinct_pid'] == 1) {
-            this.groupBy("p.account_id"); // Conditionally include groupBy based on condition
+            .innerJoin('posts', function () {
+                this.on('latest_posts.account_id', '=', 'posts.account_id')
+                    .andOn('latest_posts.latest_create_time', '=', 'posts.create_time');
+            });
+    }
+
+    // Apply your existing conditions
+    postsQuery.where(function () {
+        if (!req.query['distinct_pid']) {
+            this.where({community_id : community_id})
         }
-    })
-    .orderBy("create_time", "desc")
-    .limit(limit)
+
+        // Your existing conditions here
+        if (search_key) {
+            let search_key_array = search_key.split(",")
+            if (search_key_array.length == 1) {
+                this.where("search_key", "like", `%${JSON.stringify(search_key)}%`);
+            } else {
+                this.where("search_key", "like", `%${JSON.stringify(search_key_array)}%`);
+            }
+        }
+        if (pid) { this.where({ pid: pid }); }
+        if (type && type === "memo") { this.whereNotNull("painting"); }
+        if (type && type === "text") { this.whereNotNull("body"); }
+        if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
+        if (!allow_spoiler) { this.where({ spoiler: 0 }); }
+        if (language_id !== 254) { this.where({ language_id: language_id }); }
+    });
+
+    const posts = await postsQuery;
+
+
 
     logger.info(`Found ${posts.length} posts.`)
 
@@ -233,9 +220,9 @@ route.get('/:community_id/posts', async (req, res) => {
         .e('topic').e('community_id', post_community_id).up().up()
         .e('posts');
     for (const post of posts) {
-        const account_posted = (await db_con("accounts").where({id : post.account_id}))[0]
+        const account_posted = (await db_con("accounts").where({ id: post.account_id }))[0]
         const empathy_count = (await db_con("empathies").count(`id`))[0]['count(`id`)'];
-        const empathy_added = (await db_con("empathies").where({account_id : req.account[0].id, post_id : post.id})).length
+        const empathy_added = (await db_con("empathies").where({ account_id: req.account[0].id, post_id: post.id })).length
 
         xml = xml.e("post")
             .e("app_data", post.app_data).up()
@@ -277,7 +264,7 @@ route.get('/:community_id/posts', async (req, res) => {
             .e("title_id", post.title_id).up().up()
     }
 
-    xml = xml.end({pretty : true, allowEmpty : true});
+    xml = xml.end({ pretty: true, allowEmpty: true });
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Post-search_by_topic");
     res.setHeader('Content-Type', "application/xml")
@@ -287,28 +274,28 @@ route.get('/:community_id/posts', async (req, res) => {
 route.post("/:community_id.:favorite_status", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = req.params.community_id;
-    const community = (await db_con("communities").where({id : community_id}))[0];
+    const community = (await db_con("communities").where({ id: community_id }))[0];
 
     //If no community exists, send 404
-    if (community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
+    if (community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
 
     //Checking which method to use
     if (req.params.favorite_status == "unfavorite") {
         await db_con("favorites").del().where({
-            community_id : community_id,
-            account_id : req.account[0].id
+            community_id: community_id,
+            account_id: req.account[0].id
         });
 
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
         res.sendStatus(200);
     } else if (req.params.favorite_status == "favorite") {
         //Making sure a favorite from this user doesn't already exist.
-        const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
-        if (existing_favorite) {logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return;}
+        const existing_favorite = (await db_con("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
+        if (existing_favorite) { logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return; }
 
         await db_con("favorites").insert({
-            community_id : community_id,
-            account_id : req.account[0].id
+            community_id: community_id,
+            account_id: req.account[0].id
         })
 
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
@@ -319,31 +306,31 @@ route.post("/:community_id.:favorite_status", async (req, res) => {
 route.post("/:community_id/favorite", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = req.params.community_id;
-    const community = (await db_con("communities").where({id : community_id}))[0];
+    const community = (await db_con("communities").where({ id: community_id }))[0];
 
     //If no community exists, send 404
-    if (!community) {logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return;}
-    const existing_favorite = (await db_con("favorites").where({community_id : community_id, account_id : req.account[0].id}))[0]
+    if (!community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
+    const existing_favorite = (await db_con("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
 
     //Checking which method to use
     if (existing_favorite) {
         await db_con("favorites").del().where({
-            community_id : community_id,
-            account_id : req.account[0].id
+            community_id: community_id,
+            account_id: req.account[0].id
         });
 
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-unfavorite");
-        res.send({result : "deleted"});
+        res.send({ result: "deleted" });
     } else if (!existing_favorite) {
         //Making sure a favorite from this user doesn't already exist.
 
         await db_con("favorites").insert({
-            community_id : community_id,
-            account_id : req.account[0].id
+            community_id: community_id,
+            account_id: req.account[0].id
         })
 
         res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-favorite");
-        res.send({result : "created"});
+        res.send({ result: "created" });
     }
 })
 
@@ -357,8 +344,8 @@ route.post("/:community_id/settings", multer().none(), async (req, res) => {
     new_array[req.params.community_id] = req.body.view_setting
 
     await db_con("accounts").update({
-        community_settings : JSON.stringify(new_array),
-    }).where({id : req.account[0].id})
+        community_settings: JSON.stringify(new_array),
+    }).where({ id: req.account[0].id })
 
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-set_view");
     res.sendStatus(200)
