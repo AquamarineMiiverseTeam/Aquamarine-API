@@ -45,7 +45,7 @@ route.get("/", async (req, res) => {
         sub_communites_query.innerJoin("favorites", "favorites.community_id", "=", "communities.id")
         .where({"favorites.account_id" : req.account[0].id})
     }
-    
+
     const sub_communites = await sub_communites_query;
 
     var xml = xmlbuilder.create("result")
@@ -280,11 +280,11 @@ route.get('/:community_id/posts', async (req, res) => {
 
 route.post("/:community_id.:favorite_status", async (req, res) => {
     //Getting the correct community to favorite
-    const community_id = req.params.community_id;
+    const community_id = Number(req.params.community_id);
     const community = (await db_con("communities").where({ id: community_id }))[0];
-
+    
     //If no community exists, send 404
-    if (community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
+    if (!community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
 
     //Checking which method to use
     if (req.params.favorite_status == "unfavorite") {
