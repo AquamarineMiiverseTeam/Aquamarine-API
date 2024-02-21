@@ -18,13 +18,17 @@ route.get("/", async (req, res) => {
     //Grabing all communities
     const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
 
+    console.log(main_community)
+
     //If theres no community, send a 404 (Not Found)
     if (!main_community) { res.sendStatus(404); logger.error(`Couldn't find main community for Title ID: ${Number(req.param_pack.title_id).toString(16)}`); return; }
 
     //Getting all sub communities for a game. Some game's have user made communities
     //which we need to get, other's use only official. The api must be aware of this,
     //and act accordingly.
-    const sub_communites = await db_con("communities").where({ parent_community_id: main_community.id, type: "sub" }).where(function () {
+    const sub_communites_query = db_con("communities")
+    .select("communities.*")
+    .where({ parent_community_id: main_community.id }).where(function () {
         if (req.query['type']) {
             switch (req.query['type']) {
                 case "my":
@@ -33,13 +37,18 @@ route.get("/", async (req, res) => {
                 case "official":
                     this.whereNot({ user_community: 1 })
                     break;
-                case "favorite":
-                    break;
-                default:
-                    break;
             }
         }
     }).orderBy("create_time", "desc").limit(limit)
+
+    if (req.query['type'] == "favorite") {
+        sub_communites_query.innerJoin("favorites", "favorites.community_id", "=", "communities.id")
+        .where({"favorites.account_id" : req.account[0].id})
+    }
+
+    console.log(sub_communites_query.toQuery())
+
+    const sub_communites = await sub_communites_query;
 
     var xml = xmlbuilder.create("result")
         .e("has_error", 0).up()
