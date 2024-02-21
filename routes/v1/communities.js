@@ -45,9 +45,7 @@ route.get("/", async (req, res) => {
         sub_communites_query.innerJoin("favorites", "favorites.community_id", "=", "communities.id")
         .where({"favorites.account_id" : req.account[0].id})
     }
-
-    console.log(sub_communites_query.toQuery())
-
+    
     const sub_communites = await sub_communites_query;
 
     var xml = xmlbuilder.create("result")
