@@ -25,6 +25,10 @@ module.exports = {
         {
             path : "/v2/tutorials",
             route : require("./v2/tutorials")
+        },
+        {
+            path : "/v2/notifications",
+            route : require("./v2/notifications")
         }
     ]
 }

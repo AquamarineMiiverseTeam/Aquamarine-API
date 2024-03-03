@@ -7,9 +7,7 @@ const xmlbuilder = require('xmlbuilder');
 const common = require('../../../Aquamarine-Utils/common');
 
 route.get("/:user_pid/notifications", async (req, res) => {
-    //res.setHeader("content-type", "application/xml")
-
-    var notificationAccount = (await db_con("accounts").where({pid : req.params.user_pid}))
+    const notificationAccount = (await db_con("accounts").where({pid : req.params.user_pid}))
 
     if (notificationAccount[0]) {
         const notifications = await common.notification.getAccountUnreadNotifications(notificationAccount)
@@ -34,14 +32,12 @@ route.get("/:user_pid/notifications", async (req, res) => {
             res.status(200).send(xml);
         }
         else {
-            console.log("no notifications found")
             // res.sendStatus(204);
             // // 204 no content is better for this case (and it succesfully made the icon not glow so yuh)
             res.sendStatus(404);
         }
     }
     else {
-        console.log("notification account is null")
         res.sendStatus(404);
     }
 })
