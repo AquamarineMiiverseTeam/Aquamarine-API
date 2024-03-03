@@ -22,6 +22,9 @@ module.exports = {
         }
     ],
     v2 : [
-        
+        {
+            path : "/v2/tutorials",
+            route : require("./v2/tutorials")
+        }
     ]
 }

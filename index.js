@@ -26,6 +26,12 @@ for (const route of routes.v1) {
     app.use(route.path, route.route)
 }
 
+logger.log("Creating v2 routes..");
+
+for (const route of routes.v2) {
+    app.use(route.path, route.route)
+}
+
 //Set our app to listen on the config port
 app.listen(config_http.port, async () => {
     console.log("[INFO] Listening on port %d".green, config_http.port);
