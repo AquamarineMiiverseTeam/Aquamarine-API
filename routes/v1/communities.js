@@ -133,11 +133,24 @@ route.post("/", multer().none(), async (req, res) => {
         }
     )
 
-    fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community[0]}.jpg`, icon_jpeg, 'base64');
+    fs.writeFileSync(__dirname + `/../../CDN_Files/img/icons/${new_community[0]}.jpg`, icon_jpeg, 'base64');
 
     //Finally sending a 200 (OK) as a result
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-create");
-    res.sendStatus(200);
+    var xml = xmlbuilder.create("result")
+    .e("has_error", 0).up()
+    .e("version", 1).up()
+    .e("request_name", "community").up()
+    .e("community")
+    .e("community_id", new_community[0]).up()
+    .e("name", name).up()
+    .e("description", description).up()
+    .e("app_data", app_data).up()
+    .e("icon", icon).up()
+    .e("pid", req.account[0].pid).up().up().end({pretty : true, allowEmpty : true})
+
+    res.setHeader("Content-Type", "application/xml")
+    res.send(xml)
 
     logger.info(`Created New User-generated Community! Parent Community: ${main_community.name}`)
 })
