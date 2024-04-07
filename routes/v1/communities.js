@@ -205,7 +205,7 @@ route.get('/:community_id/posts', async (req, res) => {
         if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
         if (!allow_spoiler) { this.where({ spoiler: 0 }); }
         if (language_id !== 254) { this.where({ language_id: language_id }); }
-    });
+    }).limit(limit);
 
     const posts = await postsQuery;
 
