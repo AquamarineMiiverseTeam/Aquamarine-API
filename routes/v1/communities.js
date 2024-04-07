@@ -172,7 +172,7 @@ route.get('/:community_id/posts', async (req, res) => {
     if (req.query['distinct_pid']) {
         postsQuery.select('*')
             .from(function () {
-                this.select('account_id', db_con.raw('MAX(create_time) as latest_create_time'))
+                this.select('account_id', db_con.env_db.raw('MAX(create_time) as latest_create_time'))
                     .from('posts')
                     .where({ community_id: community_id })
                     .groupBy('account_id')
