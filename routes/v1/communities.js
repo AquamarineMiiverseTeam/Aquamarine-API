@@ -98,7 +98,7 @@ route.post("/", multer().none(), async (req, res) => {
     if (!name || !description || !app_data || !icon) { res.sendStatus(400); logger.error(`${req.account[0].nnid} Made a faulty request to v1/communities`); return; }
 
     //Getting the real icon for the community
-    const icon_jpeg = (await common.wwp.decodeIcon(icon)).slice(22, Infinity);
+    const icon_jpeg = (await decoder.decodeIcon(icon)).slice(22, Infinity);
 
     //Creating the new community and creating the icon for it.
     //TODO: check and see if 3ds had POST v1/communities

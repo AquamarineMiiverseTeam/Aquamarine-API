@@ -5,7 +5,8 @@ const db_con = require('../../../shared_config/database_con');
 
 const xmlbuilder = require('xmlbuilder');
 const moment = require('moment');
-const common = require('../../../shared_config/common');
+
+const decoder = require("../../utility/decoder")
 
 route.get("/", async (req, res) => {
     //People is the max number of people the Wii U menu requests
@@ -52,7 +53,7 @@ route.get("/", async (req, res) => {
         xml = xml.e('topic')
             .e('empathy_count', favorites).up()
             .e('has_shop_page', '1').up()
-            .e('icon', await common.wwp.encodeIcon(community.id)).up()
+            .e('icon', await decoder.encodeIcon(community.id)).up()
             .e('title_ids');
         JSON.parse(community.title_ids).forEach(element => {
             xml = xml.e('title_id', element).up()
@@ -94,7 +95,7 @@ route.get("/", async (req, res) => {
                     .e('format', 'tga').up()
                     .e('content', post.painting).up()
                     .e('size', post.painting.length).up()
-                    .e('url', "https://s3.amazonaws.com/olv-public/pap/WVW69koebmETvBVqm1").up().up();
+                    .e('url', post.painting_cdn_url).up().up();
             }
             xml = xml.e('pid', post.pid).up()
                 .e('platform_id', post.platform_id).up()
