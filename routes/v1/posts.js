@@ -4,12 +4,14 @@ const route = express.Router();
 const multer = require('multer');
 const moment = require('moment');
 
-//const decoder = require('../../../Aquamarine-Utils/decoder');
+const decoder = require('../../utility/decoder');
 
 const fs = require('fs');
 
 const logger = require('../../middleware/log');
 const db_con = require('../../../shared_config/database_con');
+
+const cdn_upload = require("../../utility/cdn_upload")
 
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
@@ -104,12 +106,27 @@ route.post("/", multer().none(), async (req, res) => {
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
     if (painting) {
-        //fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
+        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
+        const painting_result = await cdn_upload.uploadImage(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, "paintings");
+        
+        const update_data = {
+            painting_cdn_url : painting_result.secure_url
+        }
+
+        await db_con.env_db("posts").update(update_data).where("id", insert_id)
+
         logger.info(`Saved painting.`)
     }
 
     if (screenshot) {
         fs.writeFileSync(__dirname + `/../../../CDN_Files/img/screenshots/${insert_id}.jpg`, screenshot, 'base64');
+        const screenshot_result = await cdn_upload.uploadImage(__dirname + `/../../../CDN_Files/img/screenshots/${insert_id}.jpg`, "screenshots");
+
+        const update_data = {
+            screenshot_cdn_url : screenshot_result.secure_url
+        }
+
+        await db_con.env_db("posts").update(update_data).where("id", insert_id)
         logger.info(`Saved screenshot.`)
     }
 
