@@ -11,6 +11,8 @@ const logger = require('../../middleware/log');
 const db_con = require('../../../shared_config/database_con');
 const common = require('../../../shared_config/common');
 
+const decoder = require("../../utility/decoder")
+
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? req.query['limit'] : 100
@@ -65,7 +67,7 @@ route.get("/", async (req, res) => {
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", await common.wwp.encodeIcon(community.id)).up()
+            .e("icon", await decoder.encodeIcon(community.id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("pid", community.pid).up()
