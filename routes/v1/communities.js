@@ -8,15 +8,15 @@ const moment = require('moment');
 const fs = require('fs');
 
 const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
-const common = require('../../../Aquamarine-Utils/common');
+const db_con = require('../../../shared_config/database_con');
+const common = require('../../../shared_config/common');
 
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? req.query['limit'] : 100
 
     //Grabing all communities
-    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
+    const main_community = (await db_con.env_db("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
 
     console.log(main_community)
 
@@ -26,7 +26,7 @@ route.get("/", async (req, res) => {
     //Getting all sub communities for a game. Some game's have user made communities
     //which we need to get, other's use only official. The api must be aware of this,
     //and act accordingly.
-    const sub_communites_query = db_con("communities")
+    const sub_communites_query = db_con.env_db("communities")
     .select("communities.*")
     .where({ parent_community_id: main_community.id }).where(function () {
         if (req.query['type']) {
@@ -81,7 +81,7 @@ route.get("/", async (req, res) => {
 
 //Creating New Communities
 route.post("/", multer().none(), async (req, res) => {
-    const main_community = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
+    const main_community = (await db_con.env_db("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`).where({ type: "main" }).limit(1))[0];
 
     //Making sure the community is valid to create for
     if (!main_community) { res.sendStatus(404); logger.error(`Could not create community for Title ID: ${Number(req.param_pack.title_id).toString(16)} `); return; }
@@ -100,7 +100,7 @@ route.post("/", multer().none(), async (req, res) => {
 
     //Creating the new community and creating the icon for it.
     //TODO: check and see if 3ds had POST v1/communities
-    const new_community = await db_con("communities").insert(
+    const new_community = await db_con.env_db("communities").insert(
         {
             name: name,
             description: description,
@@ -124,7 +124,7 @@ route.post("/", multer().none(), async (req, res) => {
     )
 
     //Any community that is created must be favorited by the person who created it
-    await db_con("favorites").insert(
+    await db_con.env_db("favorites").insert(
         {
             community_id: main_community[0],
             account_id: req.account[0].id
@@ -157,7 +157,7 @@ route.get('/:community_id/posts', async (req, res) => {
     var community_id;
     var backupcommunity_id;
     if (req.params.community_id == 0) {
-        community_id = (await db_con("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`))[0].id
+        community_id = (await db_con.env_db("communities").whereLike("title_ids", `%${parseInt(req.param_pack.title_id)}%`))[0].id
     } else { community_id = req.params.community_id }
 
     if (req.params.community_id == 4294967295) { community_id = 19887 }
@@ -166,7 +166,7 @@ route.get('/:community_id/posts', async (req, res) => {
     if (!community_id) { res.sendStatus(404); console.log("[ERROR] (%s) Community ID(s) could not be found for %s.".red, moment().format("HH:mm:ss"), req.param_pack.title_id); return; }
 
     //Grabbing posts from DB with parameters
-    const postsQuery = db_con("posts");
+    const postsQuery = db_con.env_db("posts");
 
     // Check if the feature should be enabled
     if (req.query['distinct_pid']) {
@@ -209,8 +209,6 @@ route.get('/:community_id/posts', async (req, res) => {
 
     const posts = await postsQuery;
 
-
-
     logger.info(`Found ${posts.length} posts.`)
 
     var post_community_id;
@@ -227,9 +225,9 @@ route.get('/:community_id/posts', async (req, res) => {
         .e('topic').e('community_id', post_community_id).up().up()
         .e('posts');
     for (const post of posts) {
-        const account_posted = (await db_con("accounts").where({ id: post.account_id }))[0]
-        const empathy_count = (await db_con("empathies").count(`id`))[0]['count(`id`)'];
-        const empathy_added = (await db_con("empathies").where({ account_id: req.account[0].id, post_id: post.id })).length
+        const account_posted = (await db_con.account_db("accounts").where({ id: post.account_id }))[0]
+        const empathy_count = (await db_con.env_db("empathies").count(`id`))[0]['count(`id`)'];
+        const empathy_added = (await db_con.env_db("empathies").where({ account_id: req.account[0].id, post_id: post.id })).length
 
         xml = xml.e("post")
             .e("app_data", post.app_data).up()
@@ -281,14 +279,14 @@ route.get('/:community_id/posts', async (req, res) => {
 route.post("/:community_id.:favorite_status", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = Number(req.params.community_id);
-    const community = (await db_con("communities").where({ id: community_id }))[0];
+    const community = (await db_con.env_db("communities").where({ id: community_id }))[0];
     
     //If no community exists, send 404
     if (!community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
 
     //Checking which method to use
     if (req.params.favorite_status == "unfavorite") {
-        await db_con("favorites").del().where({
+        await db_con.env_db("favorites").del().where({
             community_id: community_id,
             account_id: req.account[0].id
         });
@@ -297,10 +295,10 @@ route.post("/:community_id.:favorite_status", async (req, res) => {
         res.sendStatus(200);
     } else if (req.params.favorite_status == "favorite") {
         //Making sure a favorite from this user doesn't already exist.
-        const existing_favorite = (await db_con("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
+        const existing_favorite = (await db_con.env_db("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
         if (existing_favorite) { logger.error(`Favorite already exists for Community ID: ${community_id} and ${req.account[0].nnid}`); res.sendStatus(400); return; }
 
-        await db_con("favorites").insert({
+        await db_con.env_db("favorites").insert({
             community_id: community_id,
             account_id: req.account[0].id
         })
@@ -313,15 +311,15 @@ route.post("/:community_id.:favorite_status", async (req, res) => {
 route.post("/:community_id/favorite", async (req, res) => {
     //Getting the correct community to favorite
     const community_id = req.params.community_id;
-    const community = (await db_con("communities").where({ id: community_id }))[0];
+    const community = (await db_con.env_db("communities").where({ id: community_id }))[0];
 
     //If no community exists, send 404
     if (!community) { logger.error(`Couldn't find a community for Community ID: ${community_id}.`); res.sendStatus(404); return; }
-    const existing_favorite = (await db_con("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
+    const existing_favorite = (await db_con.env_db("favorites").where({ community_id: community_id, account_id: req.account[0].id }))[0]
 
     //Checking which method to use
     if (existing_favorite) {
-        await db_con("favorites").del().where({
+        await db_con.env_db("favorites").del().where({
             community_id: community_id,
             account_id: req.account[0].id
         });
@@ -331,7 +329,7 @@ route.post("/:community_id/favorite", async (req, res) => {
     } else if (!existing_favorite) {
         //Making sure a favorite from this user doesn't already exist.
 
-        await db_con("favorites").insert({
+        await db_con.env_db("favorites").insert({
             community_id: community_id,
             account_id: req.account[0].id
         })
@@ -350,7 +348,7 @@ route.post("/:community_id/settings", multer().none(), async (req, res) => {
     const new_array = JSON.parse(req.account[0].community_settings)
     new_array[req.params.community_id] = req.body.view_setting
 
-    await db_con("accounts").update({
+    await db_con.env_db("accounts").update({
         community_settings: JSON.stringify(new_array),
     }).where({ id: req.account[0].id })
 

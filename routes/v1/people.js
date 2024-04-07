@@ -6,11 +6,11 @@ const axios = require('axios');
 const crypto = require('crypto');
 
 const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
+const db_con = require('../../../shared_config/database_con');
 
 route.post("/", multer().none(), async (req, res) => {
     //Checking to make sure request doesn't already have an account attached
-    if ((await db_con("accounts").where({nnid : req.body.nnid}))[0]) { res.sendStatus(403); logger.error(`Account is already created with the Network ID of ${req.body.nnid}`); return; }
+    if ((await db_con.account_db("accounts").where({nnid : req.body.nnid}))[0]) { res.sendStatus(403); logger.error(`Account is already created with the Network ID of ${req.body.nnid}`); return; }
 
     //Grabbing neccesary login details
     const nnid = req.body.nnid;
@@ -40,7 +40,7 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Creating account in database
-    const new_account_id = (await db_con("accounts").insert({
+    const new_account_id = (await db_con.account_db("accounts").insert({
         pid : account_json.pid,
         nnid : nnid,
 
@@ -58,11 +58,11 @@ route.post("/", multer().none(), async (req, res) => {
     logger.info(`Created database account for ${nnid}`)
 
     if (req.platform === "3ds") {
-        await db_con("accounts").update({
+        await db_con.account_db("accounts").update({
             "3ds_service_token" : req.service_token
         }).where({id : new_account_id})
     } else {
-        await db_con("accounts").update({
+        await db_con.account_db("accounts").update({
             wiiu_service_token : req.service_token
         }).where({id : new_account_id})
     }
@@ -79,7 +79,7 @@ route.post('/login', multer().none(), async (req, res) => {
     const service_token = req.service_token;
     const password = req.body.password;
 
-    const account = (await db_con("accounts").where({nnid : nnid}))[0];
+    const account = (await db_con.account_db("accounts").where({nnid : nnid}))[0];
 
     //Error checking
     if (!account) { res.sendStatus(404); logger.error(`No account found for nnid: ${nnid}`); return; }
@@ -89,11 +89,11 @@ route.post('/login', multer().none(), async (req, res) => {
     //Adding the new token to the database!
     if (passwordHash == account.password_hash) {
         if (req.platform === "3ds") {
-            await db_con("accounts").update({
+            await db_con.account_db("accounts").update({
                 "3ds_service_token" : service_token
             }).where({id : account.id})
         } else {
-            await db_con("accounts").update({
+            await db_con.account_db("accounts").update({
                 wiiu_service_token : service_token
             }).where({id : account.id})
         }
@@ -121,7 +121,7 @@ route.post("/update", async (req, res) => {
         return;
     }
 
-    await db_con("accounts").update({
+    await db_con.account_db("accounts").update({
         mii : account_json.data,
         mii_name : account_json.name,
         mii_hash : account_json.images.hash,

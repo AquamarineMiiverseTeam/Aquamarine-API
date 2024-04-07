@@ -4,14 +4,12 @@ const route = express.Router();
 const multer = require('multer');
 const moment = require('moment');
 
-const decoder = require('../../../Aquamarine-Utils/decoder');
+//const decoder = require('../../../Aquamarine-Utils/decoder');
 
 const fs = require('fs');
 
 const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
-
-const common = require('../../../Aquamarine-Utils/common');
+const db_con = require('../../../shared_config/database_con');
 
 route.post("/", multer().none(), async (req, res) => {
     //Important variables. Won't continue posting if these variables arn't there.
@@ -43,7 +41,7 @@ route.post("/", multer().none(), async (req, res) => {
 
     //Checking if the community id is 0, if it is, then get the community that shares the requests parampack title id.
     if (community_id == 0) {
-        community_id = await db_con("communities").whereLike("title_ids", `%${req.param_pack.title_id}%`)
+        community_id = await db_con.env_db("communities").whereLike("title_ids", `%${req.param_pack.title_id}%`)
 
         //Checking if there is an avaliable community
         if (community_id.length == 0) { res.sendStatus(404); logger.error(`Couldn't find a community for the Title ID: ${Number(req.param_pack.title_id).toString(16)}`); return;}
@@ -64,7 +62,7 @@ route.post("/", multer().none(), async (req, res) => {
     }
 
     //Checking to see if the post is of the correct type for community
-    var community = (await db_con("communities").where({id : community_id}))[0]
+    var community = (await db_con.env_db("communities").where({id : community_id}))[0]
 
     if (community.post_type == "text" && painting) { res.sendStatus(400); logger.error("Text only community!"); return;}
     if (community.post_type == "memo" && body) { res.sendStatus(400); logger.error("Memo only community!"); return;}
@@ -101,12 +99,12 @@ route.post("/", multer().none(), async (req, res) => {
     if (topic_tag) {insert_data.topic_tag = topic_tag}
     if (search_key) {insert_data.search_key = JSON.stringify(search_key)}
 
-    const insert_id = (await db_con("posts").insert(insert_data))[0];
+    const insert_id = (await db_con.env_db("posts").insert(insert_data))[0];
 
     //TODO: if painting or screenshot, save a copy of either as .jpg in cdn
 
     if (painting) {
-        fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
+        //fs.writeFileSync(__dirname + `/../../../CDN_Files/img/paintings/${insert_id}.png`, decoder.paintingProccess(painting), 'base64');
         logger.info(`Saved painting.`)
     }
 
@@ -122,17 +120,17 @@ route.post("/", multer().none(), async (req, res) => {
 
 route.post("/:post_id/empathies", async (req, res) => {
     const post_id = req.params.post_id;
-    const post = (await db_con("posts").where({id : post_id}))[0]
+    const post = (await db_con.env_db("posts").where({id : post_id}))[0]
 
     if (!post) { res.sendStatus(404); return; }
     if (post.account_id == req.account[0].id) { res.sendStatus(403); return;}
 
-    const current_yeah = (await db_con("empathies").where({account_id : req.account[0].id, post_id : post_id}))[0]
+    const current_yeah = (await db_con.env_db("empathies").where({account_id : req.account[0].id, post_id : post_id}))[0]
 
     //Checking to see if the user has already yeah'd the post
     if (current_yeah) {
         //If the user has yeah'd, delete the empathy in the database for them
-        await db_con("empathies").where({account_id : req.account[0].id, post_id : post_id}).del();
+        await db_con.env_db("empathies").where({account_id : req.account[0].id, post_id : post_id}).del();
         logger.info(`${req.account[0].nnid} un-empathied post: ${post_id}!`);
 
         //Once that is finished, send a 200 (OK) response
@@ -141,10 +139,10 @@ route.post("/:post_id/empathies", async (req, res) => {
         res.status(200).send({result : "deleted"});
 
         //Delete the old notification
-        await db_con("notifications").where({content_id : current_yeah.id, from_account_id : req.account[0].id}).del();
+        await db_con.env_db("notifications").where({content_id : current_yeah.id, from_account_id : req.account[0].id}).del();
     } else {
         //If the user hasn't yeah'd, create an empathy in the database for them
-        const new_empathy = await db_con("empathies").insert({post_id : post_id, account_id : req.account[0].id})
+        const new_empathy = await db_con.env_db("empathies").insert({post_id : post_id, account_id : req.account[0].id})
 
         //Once that is finished, send a 200 (OK) response
         //Also for portal and n3ds, send a json containing the result.
@@ -153,7 +151,7 @@ route.post("/:post_id/empathies", async (req, res) => {
         logger.info(`${req.account[0].nnid} empathied post: ${post_id}!`);
 
         //Create a new notification
-        await common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', new_empathy[0], `/posts/${post.id}`, post.id)
+        //TODO: FIX await common.notification.createNewNotification(post.account_id, req.account[0].id, 'yeah', new_empathy[0], `/posts/${post.id}`, post.id)
     }
 })
 

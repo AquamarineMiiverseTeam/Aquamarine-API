@@ -3,8 +3,7 @@ const route = express.Router();
 const bodyParser = require("body-parser")
 
 const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
-const multer = require('multer');
+const db_con = require('../../../shared_config/database_con');
 
 route.post("/:community_id/posts", bodyParser.json(), async (req, res) => {
     const community_id = req.params.community_id;
@@ -29,7 +28,7 @@ route.post("/:community_id/posts", bodyParser.json(), async (req, res) => {
         return;
     }
 
-    const community = (await db_con("communities").where({id : community_id}))[0]
+    const community = (await db_con.env_db("communities").where({id : community_id}))[0]
 
     if (community.post_type == "text" && painting) { res.sendStatus(400); logger.error("Text only community!"); return;}
     if (community.post_type == "memo" && body) { res.sendStatus(400); logger.error("Memo only community!"); return;}

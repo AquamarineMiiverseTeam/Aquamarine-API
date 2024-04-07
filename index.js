@@ -30,7 +30,7 @@ for (const route of routes.v2) {
 }
 
 //Set our app to listen on the config port
-app.listen(config_http.port, async () => {
+app.listen(process.env.PORT, async () => {
     console.log("[INFO] Current Environment: %s. Listening on port %d".green, JSON.parse(process.env.ENVIRONMENT)['ENV_NAME'], process.env.PORT);
 
     //Initializing database

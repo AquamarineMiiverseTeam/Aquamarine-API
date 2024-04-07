@@ -3,20 +3,19 @@ const route = express.Router();
 const bodyParser = require("body-parser")
 
 const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
-const multer = require('multer');
+const db_con = require('../../../shared_config/database_con');
 
 route.post("/", bodyParser.json(), async (req, res) => {
     switch (req.body.tutorial_id) {
         case "news":
-            await db_con("accounts")
+            await db_con.account_db("accounts")
                 .where({ id: req.account[0].id })
                 .update({
                     tutorial_news: 1
                 })
             break;
         case "messages":
-            await db_con("accounts")
+            await db_con.account_db("accounts")
                 .where({ id: req.account[0].id })
                 .update({
                     tutorial_messages: 1

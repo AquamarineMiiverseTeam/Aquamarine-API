@@ -1,17 +1,17 @@
 const express = require('express');
 const route = express.Router();
 
-const db_con = require('../../../Aquamarine-Utils/database_con');
+const db_con = require('../../../shared_config/database_con');
 
 const xmlbuilder = require('xmlbuilder');
 const moment = require('moment');
-const common = require('../../../Aquamarine-Utils/common');
+const common = require('../../../shared_config/common');
 
 route.get("/", async (req, res) => {
     //People is the max number of people the Wii U menu requests
     const people = req.query['people'];
 
-    const communities = await db_con.select("*").from("communities AS c").where({ platform: "wiiu", type: "main" }).orderBy(function () {
+    const communities = await db_con.env_db.select("*").from("communities AS c").where({ platform: "wiiu", type: "main" }).orderBy(function () {
         this.count("community_id").from("posts").whereRaw("community_id = `c`.id").whereBetween("create_time", [moment().subtract(5, "days").format("YYYY-MM-DD HH:mm:ss"), moment().add(1, "day").format("YYYY-MM-DD HH:mm:ss")])
     }, "desc").limit(10)
 
@@ -29,8 +29,8 @@ route.get("/", async (req, res) => {
     var account_ids = []
     //Looping through every single community
     for (const community of communities) {
-        const favorites = (await db_con("favorites").count("id").where({ community_id: community.id }))[0]["count(`id`)"]
-        const latestPostsSubquery = db_con('posts')
+        const favorites = (await db_con.env_db("favorites").count("id").where({ community_id: community.id }))[0]["count(`id`)"]
+        const latestPostsSubquery = db_con.env_db('posts')
             .select('account_id')
             .max('posts.create_time as latest_post_date')
             .where('community_id', community.id)
@@ -38,7 +38,7 @@ route.get("/", async (req, res) => {
             .groupBy('account_id')
             .as('latest_posts');
 
-        const distinctPostsQuery = db_con('posts as p')
+        const distinctPostsQuery = db_con.env_db('posts as p')
             .select('p.*')
             .join(latestPostsSubquery, function () {
                 this.on('p.account_id', '=', 'latest_posts.account_id')
@@ -66,8 +66,8 @@ route.get("/", async (req, res) => {
         for (const post of posts) {
             account_ids.push(post.account_id);
 
-            const person = (await db_con("accounts").select("*").where({ id: post.account_id }))[0]
-            const empathy_count = (await db_con("empathies").count("id").where({ post_id: post.id }))[0]['count(`id`)']
+            const person = (await db_con.account_db("accounts").select("*").where({ id: post.account_id }))[0]
+            const empathy_count = (await db_con.env_db("empathies").count("id").where({ post_id: post.id }))[0]['count(`id`)']
             //Eventually when replies are implemented, this will be an actual count, for now, it's 0
             const reply_count = 0;
 

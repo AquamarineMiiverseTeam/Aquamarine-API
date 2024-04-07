@@ -1,4 +1,4 @@
-const db_con = require('../../Aquamarine-Utils/database_con');
+const db_con = require('../../shared_config/database_con');
 
 async function log_api_usage(req, res, next) {
     var account_id;
@@ -7,7 +7,7 @@ async function log_api_usage(req, res, next) {
 
     //Make sure not to await this action. This is just so the request goes by faster, as the
     //API logging isn't too neccesary for the request to be made.
-    await db_con("api_calls").insert({
+    await db_con.env_db("api_calls").insert({
         url: req.path,
         query: req.query,
         account_id: account_id,

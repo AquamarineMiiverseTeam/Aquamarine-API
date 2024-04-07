@@ -1,13 +1,10 @@
 const express = require('express');
 const route = express.Router();
-const bodyParser = require("body-parser")
 
-const logger = require('../../middleware/log');
-const db_con = require('../../../Aquamarine-Utils/database_con');
-const multer = require('multer');
+const db_con = require('../../../shared_config/database_con');
 
 route.get("/", async (req, res) => {
-    const notifications = await db_con("notifications").where({ account_id: req.account[0].id, read: 0 })
+    const notifications = await db_con.env_db("notifications").where({ account_id: req.account[0].id, read: 0 })
     //This would eventually be the messages query, but since we don't have them yet, we'll just put in 0.
 
     if (notifications.length >= 1) {
