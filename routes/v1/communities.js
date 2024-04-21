@@ -11,6 +11,8 @@ const logger = require('../../middleware/log');
 const db_con = require('../../../shared_config/database_con');
 const common = require('../../../shared_config/common');
 
+const decoder = require("../../utility/decoder")
+
 route.get("/", async (req, res) => {
     //Getting querys and converting them to SQL
     const limit = (req.query['limit']) ? req.query['limit'] : 100
@@ -65,7 +67,7 @@ route.get("/", async (req, res) => {
             .e("community_id", community.id).up()
             .e("name", community.name).up()
             .e("description", community.description).up()
-            .e("icon", await common.wwp.encodeIcon(community.id)).up()
+            .e("icon", await decoder.encodeIcon(community.id)).up()
             .e("icon_3ds", "").up()
             .e("app_data", community.app_data).up()
             .e("pid", community.pid).up()
@@ -96,7 +98,7 @@ route.post("/", multer().none(), async (req, res) => {
     if (!name || !description || !app_data || !icon) { res.sendStatus(400); logger.error(`${req.account[0].nnid} Made a faulty request to v1/communities`); return; }
 
     //Getting the real icon for the community
-    const icon_jpeg = (await common.wwp.decodeIcon(icon)).slice(22, Infinity);
+    const icon_jpeg = (await decoder.decodeIcon(icon)).slice(22, Infinity);
 
     //Creating the new community and creating the icon for it.
     //TODO: check and see if 3ds had POST v1/communities
@@ -131,11 +133,24 @@ route.post("/", multer().none(), async (req, res) => {
         }
     )
 
-    fs.writeFileSync(__dirname + `/../../../CDN_Files/img/icons/${new_community[0]}.jpg`, icon_jpeg, 'base64');
+    fs.writeFileSync(__dirname + `/../../CDN_Files/img/icons/${new_community[0]}.jpg`, icon_jpeg, 'base64');
 
     //Finally sending a 200 (OK) as a result
     res.setHeader('X-Dispatch', "Olive::Web::API::V1::Topic-create");
-    res.sendStatus(200);
+    var xml = xmlbuilder.create("result")
+    .e("has_error", 0).up()
+    .e("version", 1).up()
+    .e("request_name", "community").up()
+    .e("community")
+    .e("community_id", new_community[0]).up()
+    .e("name", name).up()
+    .e("description", description).up()
+    .e("app_data", app_data).up()
+    .e("icon", icon).up()
+    .e("pid", req.account[0].pid).up().up().end({pretty : true, allowEmpty : true})
+
+    res.setHeader("Content-Type", "application/xml")
+    res.send(xml)
 
     logger.info(`Created New User-generated Community! Parent Community: ${main_community.name}`)
 })
@@ -205,7 +220,7 @@ route.get('/:community_id/posts', async (req, res) => {
         if (by && by === "self") { this.where({ account_id: req.account[0].id }); }
         if (!allow_spoiler) { this.where({ spoiler: 0 }); }
         if (language_id !== 254) { this.where({ language_id: language_id }); }
-    });
+    }).limit(limit);
 
     const posts = await postsQuery;
 
